@@ -3,269 +3,484 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barrio FC - More People. More Football. More Community.</title>
+    <title>Barrio FC - Matchday Dashboard</title>
     <style>
-        /* CSS RESET & VARIABLES */
-        html, body { margin: 0; padding: 0; min-height: 100%; display: flex; flex-direction: column; background-color: #0a0a0c; color: #f8fafc; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        /* CSS RESET & CORE STYLES */
+        html, body { margin: 0; padding: 0; height: 100%; display: flex; flex-direction: column; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f5f7fb; color: #333; }
         
-        /* 1. BLACK CLUB HEADER & NAVIGATION */
-        .club-header { background-color: #000000; padding: 18px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; position: relative; z-index: 10; }
-        .club-logo-text { font-size: 24px; font-weight: 900; letter-spacing: 1.5px; text-transform: uppercase; color: #ffffff; cursor: pointer; }
-        .club-nav button { background: none; border: none; color: #94a3b8; font-size: 14px; font-weight: 600; margin-left: 24px; cursor: pointer; padding: 6px 0; border-bottom: 2px solid transparent; transition: all 0.2s; }
-        .club-nav button:hover { color: #ffffff; }
-        .club-nav button.active-tab { color: #ffffff; border-color: #2563eb; }
+        /* BLACK HEADER */
+        .club-header { background-color: #000000; color: #ffffff; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        .header-left { display: flex; align-items: center; gap: 12px; }
+        .club-logo-frame { width: 36px; height: 36px; border-radius: 50%; background-color: #1e293b; border: 1px solid #334155; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .club-logo-img { width: 100%; height: 100%; object-fit: cover; }
+        .club-logo-text { font-size: 22px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; display: flex; align-items: center; }
 
-        /* 2. HERO PHOTO BANNER */
-        .hero-banner-container { width: 100%; height: 450px; position: relative; overflow: hidden; background: #000; }
-        .hero-photo { width: 100%; height: 100%; object-fit: cover; object-position: center 50%; filter: grayscale(80%) brightness(75%); transition: filter 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
-        .hero-banner-container:hover .hero-photo { filter: grayscale(0%) brightness(100%); }
-        .hero-banner-overlay { position: absolute; bottom: 0; left: 0; width: 100%; height: 50px; background: linear-gradient(to bottom, transparent, #0a0a0c); pointer-events: none; }
-
-        /* MAIN INNER WRAPPER */
-        .main-wrapper { max-width: 1100px; width: 100%; margin: 0 auto; padding: 0 20px 40px 20px; box-sizing: border-box; flex: 1; }
-
-        /* TAB VIEWS */
-        .tab-content { display: none; }
-        .tab-content.active-view { display: block; }
-
-        /* 3. CORE IDENTITY SECTION (3 COLUMNS) */
-        .identity-row { display: grid; grid-template-columns: 1fr auto 1fr; gap: 30px; align-items: center; padding: 60px 0; text-align: center; border-bottom: 1px solid #1e293b; margin-bottom: 5px; }
-        @media (max-width: 768px) { .identity-row { grid-template-columns: 1fr; gap: 20px; padding: 40px 0; } .left-slogan, .right-slogan { text-align: center !important; } }
+        /* MAIN CONTENT CONTAINER */
+        .main-wrapper { max-width: 1200px; width: 100%; margin: 30px auto; padding: 0 20px; box-sizing: border-box; flex: 1; }
         
-        .left-slogan { font-size: 20px; font-weight: 600; color: #cbd5e1; text-align: right; line-height: 1.4; letter-spacing: -0.2px; }
-        .right-slogan { font-size: 18px; font-weight: 400; color: #94a3b8; text-align: left; line-height: 1.5; }
+        /* DYNAMIC GRID TOP BOARD */
+        .top-board { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 25px; }
         
-        .center-logo-box { width: 120px; height: 120px; background: #111115; border: 2px solid #334155; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto; box-shadow: 0 0 25px rgba(255,255,255,0.03); overflow: hidden; }
-        .club-logo-img { width: 100%; height: 100%; object-fit: cover; object-position: center; border-radius: 50%; user-select: none; pointer-events: none; }
-
-        /* INFO CALLOUT ON HOME PAGE */
-        .info-card { background: #111115; border: 1px solid #1e293b; border-radius: 12px; padding: 30px; margin-top: 40px; text-align: center; }
-        .info-card h3 { margin-top: 0; color: #ffffff; font-size: 20px; }
-        .info-card p { color: #94a3b8; font-size: 15px; line-height: 1.6; max-width: 700px; margin: 0 auto 20px auto; }
-        .cta-btn { background-color: #2563eb; color: white; border: none; padding: 12px 30px; font-size: 14px; font-weight: 700; border-radius: 6px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; transition: background 0.2s; }
-        .cta-btn:hover { background-color: #1d4ed8; }
-
-        /* 4. SYMMETRIC DASHBOARD GRID SYSTEM */
-        .section-headline { text-align: center; font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #ffffff; margin: 40px 0 25px 0; }
-        .top-board { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 30px; }
-        @media (max-width: 900px) { .top-board { grid-template-columns: 1fr; } }
+        .board-column { background: #e2e8f0; padding: 15px; border-radius: 12px; display: flex; flex-direction: column; box-sizing: border-box; min-height: 240px; position: relative; }
+        .roster-column { background: white; border: 2px solid #cbd5e1; }
+        .board-title { margin: 0 0 12px 0; font-size: 16px; color: #1e293b; font-weight: 700; text-align: center; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid rgba(0,0,0,0.05); padding-bottom: 8px; height: 24px; line-height: 24px; display: flex; justify-content: space-between; align-items: center; }
         
-        .board-column { background: #111115; padding: 18px; border-radius: 12px; display: flex; flex-direction: column; border: 1px solid #1e293b; box-sizing: border-box; min-height: 240px; position: relative; }
-        .roster-column { background: #13131a; border-color: #334155; }
-        .board-title { margin: 0 0 12px 0; font-size: 14px; color: #94a3b8; font-weight: 700; text-align: center; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #1e293b; padding-bottom: 10px; height: 20px; line-height: 20px; }
-        
-        .session-card { background: #181820; padding: 14px; border-radius: 8px; margin-bottom: 10px; border: 2px solid transparent; cursor: pointer; transition: all 0.2s; min-height: 64px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; position: relative; }
+        .session-card { background: white; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 2px solid transparent; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.02); min-height: 64px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; position: relative; }
         .session-card:last-child { margin-bottom: 0; }
-        .session-card:hover { border-color: #475569; background: #1c1c24; transform: translateY(-1px); }
-        .session-card.active { border-color: #2563eb; background-color: #0f172a; box-shadow: 0 4px 20px rgba(37,99,235,0.15); }
+        .session-card:hover { border-color: #cbd5e1; transform: translateY(-1px); }
+        .session-card.active { border-color: #2563eb; background-color: #eff6ff; box-shadow: 0 4px 12px rgba(37,99,235,0.1); }
         
-        .session-time { font-weight: 700; color: #ffffff; font-size: 14px; display: flex; justify-content: space-between; align-items: center; padding-right: 20px; }
-        .session-meta { font-size: 11px; color: #64748b; margin-top: 5px; display: flex; justify-content: space-between; }
-        .live-pill { background: #272730; color: #cbd5e1; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+        .session-time { font-weight: 700; color: #0f172a; font-size: 14px; display: flex; justify-content: space-between; align-items: center; padding-right: 20px; }
+        .session-meta { font-size: 11px; color: #64748b; margin-top: 4px; display: flex; justify-content: space-between; }
+        .live-pill { background: #e2e8f0; color: #475569; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
         .session-card.active .live-pill { background: #2563eb; color: white; }
 
-        /* REGISTRATION FORM STYLING */
-        .form-section { background: #111115; padding: 35px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-width: 650px; margin: 0 auto; border: 1px solid #2563eb; }
-        label { font-weight: 600; display: block; margin-top: 15px; color: #94a3b8; font-size: 13px; }
-        input, select, .submit-btn { width: 100%; padding: 12px; margin-top: 6px; box-sizing: border-box; border: 1px solid #1e293b; border-radius: 6px; font-size: 14px; background: #181820; color: white; }
-        input:focus, select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.25); }
-        select:disabled { background: #0f0f14; color: #475569; border-color: #1a1a24; cursor: not-allowed; }
+        /* ACTION TRIGGER BUTTON */
+        .trigger-container { text-align: center; margin-bottom: 25px; }
+        .action-trigger-btn { background-color: #1e293b; color: white; border: none; padding: 15px 40px; font-size: 16px; font-weight: 700; border-radius: 8px; cursor: pointer; transition: all 0.2s; width: auto; display: inline-block; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .action-trigger-btn:hover { background-color: #0f172a; transform: translateY(-1px); }
+        .action-trigger-btn.form-open { background-color: #64748b; }
+        .action-trigger-btn:disabled { background-color: #94a3b8 !important; cursor: not-allowed !important; transform: none !important; box-shadow: none !important; }
+
+        /* BOTTOM COLLAPSIBLE REGISTRATION FORM */
+        .form-section { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); display: none; max-width: 600px; margin: 0 auto 30px auto; border-top: 4px solid #2563eb; }
+        label { font-weight: 600; display: block; margin-top: 15px; color: #475569; }
+        input, select, .submit-btn { width: 100%; padding: 12px; margin-top: 6px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
+        input:focus, select:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+        select:disabled { background: #f1f5f9; color: #94a3b8; cursor: not-allowed; }
         
-        .submit-btn { background-color: #2563eb; color: white; border: none; font-weight: 700; margin-top: 25px; cursor: pointer; transition: background 0.2s; text-transform: uppercase; letter-spacing: 0.5px; }
+        .submit-btn { background-color: #2563eb; color: white; border: none; font-weight: 600; margin-top: 25px; cursor: pointer; transition: background 0.2s; }
         .submit-btn:hover { background-color: #1d4ed8; }
-        .submit-btn:disabled { background-color: #1e293b; color: #64748b; cursor: not-allowed; }
+        .submit-btn:disabled { background-color: #cbd5e1; color: #94a3b8; cursor: not-allowed; }
         
+        /* FRIEND INPUT GRID */
         #friendFieldsContainer { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 5px; }
         @media (min-width: 480px) { #friendFieldsContainer { grid-template-columns: 1fr 1fr; } }
-        .friend-input { background-color: #16161e; border-left: 4px solid #2563eb; padding: 10px; border-radius: 0 6px 6px 0; box-sizing: border-box; }
-        .friend-input label { margin-top: 0; font-size: 11px; }
-        .friend-input input { padding: 8px; margin-top: 4px; background: #1c1c24; border-color: #27273a; }
-        
-        /* ROSTER BADGES & CONTROLS */
-        .player-badge { display: inline-block; padding: 5px 12px; margin: 4px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1px solid #334155; position: relative; }
-        .admin-mode .player-badge { cursor: pointer; padding-right: 24px; }
-        .admin-mode .player-badge::after { content: '⚙️'; position: absolute; right: 6px; top: 5px; font-size: 10px; opacity: 0.6; }
-        .admin-mode .player-badge:hover { filter: brightness(1.2); border-color: #2563eb; }
-        
-        .badge-WHITE { background-color: #ffffff; color: #1e293b; }
-        .badge-RED { background-color: #7f1d1d; color: #fee2e2; border-color: #991b1b; }
-        .badge-BLUE { background-color: #1e3a8a; color: #dbeafe; border-color: #1e40af; }
-        .badge-BLACK { background-color: #000000; color: #f8fafc; border-color: #1e293b; }
-        
-        .roster-scroll { max-height: 140px; overflow-y: auto; padding: 4px; border: 1px solid #1e293b; border-radius: 6px; background: #0c0c10; min-height: 40px;}
+        .friend-input { background-color: #f8fafc; border-left: 4px solid #3b82f6; padding: 10px; border-radius: 0 6px 6px 0; box-sizing: border-box; }
+        .friend-input label { margin-top: 0; font-size: 12px; }
+        .friend-input input { padding: 8px; margin-top: 4px; }
 
-        /* ADMIN EXCLUSIVE UI ELEMENTS */
+        /* POLICY NOTICE BOX STYLES */
+        .policy-box { background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 15px; margin-top: 20px; font-size: 13px; color: #78350f; line-height: 1.5; }
+        .policy-title { font-weight: 700; font-size: 14px; color: #92400e; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .policy-section-header { font-weight: 700; color: #92400e; margin-top: 10px; margin-bottom: 2px; }
+
+        /* WAITLIST NOTICE BOX STYLES */
+        .waitlist-policy-box { background-color: #fff7ed; border: 1px solid #ffedd5; border-radius: 8px; padding: 15px; margin-top: 20px; font-size: 13px; color: #9a3412; line-height: 1.5; }
+        .waitlist-policy-title { font-weight: 700; font-size: 14px; color: #c2410c; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+
+        /* GCASH PANEL STYLES */
+        .gcash-panel { background: #f0f7ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 20px; margin-top: 20px; box-sizing: border-box; }
+        .gcash-title { font-weight: 800; color: #1e40af; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+        
+        .gcash-content-split { display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 15px; }
+        @media (min-width: 480px) { .gcash-content-split { grid-template-columns: 1.1fr 0.9fr; align-items: center; } }
+        
+        .gcash-info-box { background: white; padding: 12px; border-radius: 6px; border: 1px solid #dbeafe; font-size: 13px; color: #1e293b; line-height: 1.5; box-sizing: border-box; }
+        .gcash-info-box strong { color: #2563eb; }
+        
+        .gcash-qr-container { background: white; border: 1px solid #dbeafe; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box; min-height: 180px; }
+        .gcash-qr-img { max-width: 100%; max-height: 190px; object-fit: contain; border-radius: 4px; }
+        
+        /* ROSTER BADGES & ADMIN INDICATORS */
+        .player-badge { display: inline-block; padding: 5px 10px; margin: 3px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1px solid #cbd5e1; position: relative; }
+        .admin-mode .player-badge { cursor: pointer; padding-right: 22px; }
+        .admin-mode .player-badge::after { content: '⚙️'; position: absolute; right: 6px; top: 5px; font-size: 9px; opacity: 0.6; }
+        .admin-mode .player-badge:hover { filter: brightness(0.95); border-color: #2563eb; }
+
+        .badge-WHITE { background-color: #ffffff; color: #1e293b; }
+        .badge-RED { background-color: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+        .badge-BLUE { background-color: #dbeafe; color: #1e40af; border-color: #93c5fd; }
+        .badge-BLACK { background-color: #1e293b; color: #ffffff; border-color: #0f172a; }
+        
+        .roster-scroll { max-height: 140px; overflow-y: auto; padding: 4px; border: 1px solid #cbd5e1; border-radius: 6px; background: #f8fafc; min-height: 40px;}
+
+        /* ADMIN SPECIFIC VISUAL LAYERS */
         .admin-only { display: none !important; }
         .admin-mode .admin-only { display: inline-block !important; }
         .admin-flex { display: none !important; }
         .admin-mode .admin-flex { display: flex !important; }
         
-        .admin-badge-indicator { background: #b91c1c; color: white; padding: 4px 10px; font-size: 11px; font-weight: bold; border-radius: 4px; letter-spacing: 0.5px; text-transform: uppercase; margin-left: 10px; display: none; }
+        .admin-badge-indicator { background: #ef4444; color: white; padding: 3px 8px; font-size: 11px; font-weight: bold; border-radius: 4px; margin-left: 10px; display: none; text-transform: uppercase; letter-spacing: 0.5px; }
         .admin-mode .admin-badge-indicator { display: inline-block; }
         
-        .admin-card-del-btn { position: absolute; right: 8px; top: 8px; background: #ef4444; color: white; border: none; border-radius: 4px; width: 20px; height: 20px; font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; z-index: 5; }
-        .admin-card-del-btn:hover { background: #b91c1c; }
+        .admin-card-del-btn { position: absolute; right: 8px; top: 8px; background: #ef4444; color: white; border: none; border-radius: 4px; width: 20px; height: 20px; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; z-index: 5; }
+        .admin-card-del-btn:hover { background: #dc2626; }
+
+        .day-del-btn { background: #ef4444; color: white; border: none; border-radius: 4px; padding: 2px 6px; font-size: 11px; cursor: pointer; font-weight: bold; }
+        .day-del-btn:hover { background: #dc2626; }
         
-        .add-slot-btn { background: #1e293b; color: #94a3b8; border: 1px dashed #334155; padding: 10px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; text-align: center; margin-top: auto; transition: all 0.2s; }
-        .add-slot-btn:hover { color: white; border-color: #94a3b8; background: #161622; }
+        .add-slot-btn { background: white; color: #64748b; border: 1px dashed #cbd5e1; padding: 10px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; text-align: center; margin-top: 8px; transition: all 0.2s; width: 100%; box-sizing: border-box; }
+        .add-slot-btn:hover { color: #1e293b; border-color: #94a3b8; background: #f8fafc; }
 
-        .admin-action-bar { background: #181824; border: 1px solid #b91c1c; padding: 10px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 600; }
-        .admin-reset-btn { background: #b91c1c; color: white; border: none; padding: 6px 12px; font-size: 11px; font-weight: bold; border-radius: 4px; cursor: pointer; text-transform: uppercase; }
-        .admin-reset-btn:hover { background: #991b1b; }
+        .admin-action-bar { background: #ffeeeb; border: 1px solid #fca5a5; padding: 12px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 600; color: #991b1b; gap: 10px; flex-wrap: wrap; }
+        .admin-reset-btn { background: #ef4444; color: white; border: none; padding: 6px 12px; font-size: 11px; font-weight: bold; border-radius: 4px; cursor: pointer; text-transform: uppercase; }
+        .admin-reset-btn:hover { background: #dc2626; }
 
-        /* 5. BLACK FOOTER BAR & LOGIN TRIGGER */
-        .club-footer { background-color: #000000; color: #475569; text-align: center; padding: 25px; font-size: 12px; border-top: 1px solid #1e293b; font-weight: 500; margin-top: auto; display: flex; flex-direction: column; gap: 10px; align-items: center; }
-        .admin-lock-link { color: #27273a; text-decoration: none; font-size: 11px; cursor: pointer; background: none; border: none; transition: color 0.2s; }
-        .admin-lock-link:hover { color: #475569; }
+        .admin-lock-btn { background: #d97706; color: white; border: none; padding: 6px 12px; font-size: 11px; font-weight: bold; border-radius: 4px; cursor: pointer; text-transform: uppercase; }
+        .admin-lock-btn:hover { background: #b45309; }
+        .admin-lock-btn.locked { background: #16a34a; }
+        .admin-lock-btn.locked:hover { background: #15803d; }
+
+        .admin-add-day-btn { background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 700; font-size: 13px; cursor: pointer; margin-bottom: 15px; }
+        .admin-add-day-btn:hover { background: #1d4ed8; }
+
+        /* POPUP MODAL TEMPLATE */
+        .time-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 100; }
+        .time-modal-content { background: white; padding: 25px; border-radius: 12px; max-width: 400px; width: 90%; box-sizing: border-box; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .time-picker-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px; }
+        .time-select-group { display: flex; gap: 4px; margin-top: 4px; }
+        .time-modal-btns { display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px; }
+        .modal-btn { padding: 10px 20px; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; }
+        .modal-btn.save { background: #2563eb; color: white; }
+        .modal-btn.cancel { background: #e2e8f0; color: #475569; }
+
+        /* INTERACTIVE ADMIN ACTION MODAL */
+        .admin-action-box { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+        .admin-ctrl-btn { width: 100%; padding: 12px; font-weight: 700; font-size: 14px; border: none; border-radius: 6px; cursor: pointer; transition: background 0.2s; text-transform: uppercase; }
+        .admin-ctrl-btn.swap { background-color: #3b82f6; color: white; }
+        .admin-ctrl-btn.swap:hover { background-color: #2563eb; }
+        .admin-ctrl-btn.del { background-color: #ef4444; color: white; }
+        .admin-ctrl-btn.del:hover { background-color: #dc2626; }
+
+        /* COMPACT FOOTER */
+        .club-footer { background-color: #000000; color: #94a3b8; padding: 12px 30px; font-size: 11px; border-top: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; }
+        @media (max-width: 600px) {
+            .club-footer { flex-direction: column; gap: 8px; text-align: center; padding: 15px; }
+        }
+        .footer-left-txt { font-weight: 500; }
+        .footer-nav-links { display: flex; gap: 15px; align-items: center; }
+        .footer-link-item { color: #64748b; text-decoration: none; font-size: 11px; font-weight: 600; cursor: pointer; background: none; border: none; transition: color 0.2s; padding: 0; }
+        .footer-link-item:hover { color: #ffffff; }
     </style>
 </head>
 <body id="pageBody">
 
-    <!-- 1. HEADER MODULE -->
     <header class="club-header">
-        <div class="club-logo-text" onclick="switchView('home')">Barrio FC <span class="admin-badge-indicator">Admin Access</span></div>
-        <nav class="club-nav">
-            <button id="tabBtn-home" class="active-tab" onclick="switchView('home')">Home Hub</button>
-            <button id="tabBtn-register" onclick="switchView('register')">Sign Up & Play</button>
-        </nav>
+        <div class="header-left">
+            <div class="club-logo-frame">
+                <img src="logo.jfif" alt="Barrio FC Logo" class="club-logo-img" onerror="this.style.display='none'">
+            </div>
+            <div class="club-logo-text">Barrio FC <span class="admin-badge-indicator">Admin</span></div>
+        </div>
     </header>
 
-    <!-- 2. PHOTO BANNER MODULE -->
-    <div class="hero-banner-container">
-        <img src="openplay.jpg" alt="Barrio FC pitch action banner" class="hero-photo">
-        <div class="hero-banner-overlay"></div>
-    </div>
-
-    <!-- MAIN BODY SYSTEM -->
     <div class="main-wrapper">
-        
-        <!-- 3. BRAND IDENTITY SLOTS -->
-        <section class="identity-row">
-            <div class="left-slogan">Building a<br>Football Community.</div>
-            <div class="center-logo-box">
-                <img src="logo.jfif" alt="Barrio FC Club Crest" class="club-logo-img">
-            </div>
-            <div class="right-slogan">More people.<br>More football.<br>More community.</div>
-        </section>
-
-        <!-- ================= HOME TAB VIEW ================= -->
-        <div id="viewContainer-home" class="tab-content active-view">
-            <div class="info-card">
-                <h3>Welcome to the Pitch</h3>
-                <p>
-                    Barrio FC is an open-play community centered around accessible, competitive, and regular pick-up matches. 
-                    We secure premium pitch sessions at Parqal weekly so players of all backgrounds can lace up and play. No seasonal commitments, just community football.
-                </p>
-                <button class="cta-btn" onclick="switchView('register')">View Available Time Slots</button>
+        <div class="admin-action-bar admin-flex">
+            <span>⚠️ Organizer Connected. Manage lineup status, clear rosters, or toggle System Lock Mode below.</span>
+            <div style="display: flex; gap: 8px;">
+                <button id="adminLockToggleBtn" class="admin-lock-btn" onclick="toggleSystemLockMode()">🔒 Lock Registration</button>
+                <button class="admin-reset-btn" onclick="clearActiveSession()">Reset Roster</button>
             </div>
         </div>
 
-        <!-- ================= SIGN UP / REGISTRATION CONSOLE TAB VIEW ================= -->
-        <div id="viewContainer-register" class="tab-content">
-            
-            <!-- Admin Session Reset Header Panel -->
-            <div class="admin-action-bar admin-flex">
-                <span>⚠️ Connected as Organizer. Click on any player badge below to change line-ups or kick from slot.</span>
-                <button class="admin-reset-btn" onclick="clearActiveSession()">Reset This Roster</button>
-            </div>
+        <div style="text-align: right;">
+            <button class="admin-add-day-btn admin-only" onclick="openAddDayModal()">➕ Add Matchday</button>
+        </div>
 
-            <h2 class="section-headline">Matchday Booking Hub</h2>
-            
-            <div class="top-board">
-                <!-- SUNDAY BLOCKS -->
-                <div class="board-column" id="col-sunday">
-                    <div class="board-title">📅 Sunday Slots</div>
-                    <div id="slots-container-sunday">
-                        <!-- Sunday session cards feed dynamically here -->
+        <div class="top-board" id="dynamicDaysBoard"></div>
+
+        <div class="trigger-container">
+            <button id="triggerBtn" class="action-trigger-btn" onclick="toggleRegisterForm()">Loading sessions...</button>
+        </div>
+
+        <div id="regFormSection" class="form-section">
+            <h3 style="margin-top:0;" id="formTitle">Roster Registration Form</h3>
+            <form id="signupForm" onsubmit="handleSignup(event)">
+                <label for="shirtColor">Shirt / Team Preference:</label>
+                <select id="shirtColor" required onchange="adaptFormLimits()"></select>
+
+                <div style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 12px; border-radius: 6px; margin-top: 15px;">
+                    <label for="isGK" style="margin-top:0; display:inline-flex; align-items:center; gap:8px; cursor:pointer;">
+                        <input type="checkbox" id="isGK" onchange="handleGKChange()" style="width:auto; margin:0;"> 🧤 Registering as a Goalkeeper (GK)?
+                    </label>
+                    <div id="gkWarning" style="color: #ea580c; font-size: 11px; font-weight: 600; margin-top: 4px; display: none;">
+                        ⚠️ The GK slot for this team color is already taken for this session.
                     </div>
-                    <button class="add-slot-btn admin-only" onclick="addNewSlot('sunday')">+ Add Custom Sunday Slot</button>
                 </div>
 
-                <!-- MONDAY BLOCKS -->
-                <div class="board-column" id="col-monday">
-                    <div class="board-title">📅 Monday Slots</div>
-                    <div id="slots-container-monday">
-                        <!-- Monday session cards feed dynamically here -->
+                <label for="slotCount">Total Slots Needed:</label>
+                <select id="slotCount" onchange="handleSlotChange()"></select>
+
+                <label for="leaderName">Your Full Name:</label>
+                <input type="text" id="leaderName" required placeholder="Juan Dela Cruz">
+
+                <label for="fbLink">Facebook Profile Link:</label>
+                <input type="url" id="fbLink" required placeholder="https://www.facebook.com/username">
+
+                <div id="friendFieldsContainer"></div>
+
+                <div id="policyWrapperZone">
+                    <div class="policy-box">
+                        <div class="policy-title">📋 Important Session Terms & Waiver Summary:</div>
+                        <div class="policy-section-header">Cancellation Policy:</div>
+                        • <strong>24+ Hours Notice:</strong> Cancellations made at least 24 hours prior to kickoff receive full session credit.<br>
+                        • <strong>Under 24 Hours:</strong> Non-refundable/non-creditable as pitch bookings are locked in. You may send a friend in your place!<br>
+                        <div class="policy-section-header">Injury & Liability Waiver:</div>
+                        • Football is a physical sport with inherent risks of injury. By registering, you voluntarily assume all participation risks and release Barrio FC, its organizers, and venue partners from injury/loss liability.<br>
+                        • Players must be physically fit to participate.<br>
+                        <div class="policy-section-header">Code of Conduct:</div>
+                        • Zero tolerance for dangerous play, verbal abuse, or aggressive behavior.
                     </div>
-                    <button class="add-slot-btn admin-only" onclick="addNewSlot('monday')">+ Add Custom Monday Slot</button>
+
+                    <div style="margin-top: 15px; padding: 4px 0; display: flex; align-items: flex-start; gap: 8px;">
+                        <input type="checkbox" id="policyAgreement" required style="width: auto; margin-top: 3px; cursor: pointer;" onchange="evaluateSubmitLockState()">
+                        <label for="policyAgreement" style="margin-top: 0; font-size: 13px; font-weight: 600; color: #1e293b; cursor: pointer; user-select: none;">
+                            I agree to the Session Terms, Cancellation Policy, Injury Waiver, and Code of Conduct.
+                        </label>
+                    </div>
                 </div>
 
-                <!-- LIVE MONITOR COLUMN -->
-                <div class="board-column roster-column">
-                    <div class="board-title">
-                        📊 Live Check: <span id="liveCount">0</span>/40
+                <div id="waitlistPolicyWrapperZone" style="display: none;">
+                    <div class="waitlist-policy-box">
+                        <div class="waitlist-policy-title">🚨 Waitlist Terms & Waiver Summary:</div>
+                        • 🛑 <strong>Unconfirmed Slot:</strong> Being on the waitlist means your slot is not confirmed and you are not in the active lineup until called up.<br>
+                        • 🔄 <strong>Call-Ups:</strong> You will only get a playing slot if someone from the main roster cancels!<br>
+                        • ❌💳 <strong>No Advance Payment:</strong> Do NOT pay or send GCash in advance while you are on the waitlist.<br>
+                        • 📩 <strong>2-Hour Response Rule:</strong> Once an organizer messages you that a spot has opened up, you have <strong>2 hours to reply and confirm</strong> before the slot is offered to the next player.<br>
+                        • ⚽ <strong>Injury Waiver & Conduct:</strong> By joining the queue, you voluntarily assume physical play risks and agree to abide by our Code of Conduct and zero-tolerance aggression rules upon entering the match.
+                    </div>
+
+                    <div style="margin-top: 15px; padding: 4px 0; display: flex; align-items: flex-start; gap: 8px;">
+                        <input type="checkbox" id="waitlistAgreement" style="width: auto; margin-top: 3px; cursor: pointer;" onchange="evaluateSubmitLockState()">
+                        <label for="waitlistAgreement" style="margin-top: 0; font-size: 13px; font-weight: 600; color: #1e293b; cursor: pointer; user-select: none;">
+                            I agree to the Waitlist Rules, 2-Hour Response Policy, Injury Waiver, and Code of Conduct.
+                        </label>
+                    </div>
+                </div>
+
+                <div class="gcash-panel" id="paymentPanel">
+                    <div class="gcash-title">Secure Slot via GCash</div>
+                    <div class="gcash-content-split">
+                        <div class="gcash-info-box" id="paymentDetailsBox">
+                            Pitch Fee per Player: <strong>₱200</strong><br>
+                            Total Amount Due: <strong id="gcashTotalText">₱200</strong><br><br>
+                            Account Name: <strong>Jacel D. Palabay</strong><br>
+                            GCash Number: <strong>0967 169 3361</strong>
+                        </div>
+                        <div class="gcash-qr-container">
+                            <img id="paymentQrImg" src="gcash.jpg" alt="Payment QR Code" class="gcash-qr-img" onerror="this.style.display='none'; document.getElementById('qrPlaceholder').style.display='block';">
+                            <div class="gcash-qr-placeholder" id="qrPlaceholder" style="display:none;">📸 [Scan QR Code]</div>
+                        </div>
                     </div>
                     
-                    <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
-                        <div style="margin-bottom: 8px;">
-                            <div style="font-size: 11px; font-weight: bold; color: #10b981; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Main Roster</div>
-                            <div id="mainRosterContainer" class="roster-scroll"></div>
-                        </div>
-                        <div>
-                            <div style="font-size: 11px; font-weight: bold; color: #f97316; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Waitlist / Queue</div>
-                            <div id="waitlistContainer" class="roster-scroll"></div>
-                        </div>
+                    <label for="gcashScreenshot" style="color:#1e40af; margin-top:0;">Upload Payment Screenshot (PNG/JPG):</label>
+                    <input type="file" id="gcashScreenshot" accept="image/*" required style="background: white;">
+                </div>
+
+                <button type="submit" id="submitBtn" class="submit-btn" disabled>Confirm Registration</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+    <div class="time-modal" id="addDayModal">
+        <div class="time-modal-content">
+            <h3 style="margin-top:0; color:#1e293b;">Select Matchday to Add</h3>
+            <label for="dayPickerSelect">Choose Day:</label>
+            <select id="dayPickerSelect" style="font-weight: 600;">
+                <option value="monday">Monday</option>
+                <option value="tuesday">Tuesday</option>
+                <option value="wednesday">Wednesday</option>
+                <option value="thursday">Thursday</option>
+                <option value="friday">Friday</option>
+                <option value="saturday">Saturday</option>
+                <option value="sunday">Sunday</option>
+            </select>
+            <div class="time-modal-btns">
+                <button class="modal-btn cancel" onclick="closeAddDayModal()">Cancel</button>
+                <button class="modal-btn save" onclick="confirmAddDay()">Add Day</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="time-modal" id="timeModal">
+        <div class="time-modal-content">
+            <h3 style="margin-top:0; color:#1e293b;" id="timeModalHeaderTitle">Create Time Slot</h3>
+            <label for="modalSlotName">Slot Title Name:</label>
+            <input type="text" id="modalSlotName" placeholder="e.g. Late Night Pitch" required>
+            <div class="time-picker-row">
+                <div>
+                    <label>Start Time:</label>
+                    <div class="time-select-group">
+                        <select id="startHour"></select>
+                        <select id="startAmpm"><option value="AM">AM</option><option value="PM">PM</option></select>
+                    </div>
+                </div>
+                <div>
+                    <label>End Time:</label>
+                    <div class="time-select-group">
+                        <select id="endHour"></select>
+                        <select id="endAmpm"><option value="AM">AM</option><option value="PM">PM</option></select>
                     </div>
                 </div>
             </div>
-
-            <!-- REGISTRATION INTAKE FORM -->
-            <div class="form-section">
-                <h3 style="margin-top:0; font-weight:800; text-transform:uppercase; font-size:14px; letter-spacing:0.5px; text-align:center;">
-                    Roster Entry Form — Target: <span id="targetSessionLabel" style="color:#2563eb;">Loading...</span>
-                </h3>
-                
-                <form id="signupForm" onsubmit="handleSignup(event)">
-                    <label for="shirtColor">Shirt / Team Preference:</label>
-                    <select id="shirtColor" required onchange="adaptFormLimits()">
-                    </select>
-
-                    <label for="slotCount">Total Slots Needed:</label>
-                    <select id="slotCount" onchange="updateFriendFields()">
-                    </select>
-
-                    <label for="leaderName">Your Full Name:</label>
-                    <input type="text" id="leaderName" required placeholder="Juan Dela Cruz">
-
-                    <div id="friendFieldsContainer"></div>
-
-                    <button type="submit" id="submitBtn" class="submit-btn">Confirm Squad Entry</button>
-                </form>
+            <div class="time-modal-btns">
+                <button class="modal-btn cancel" onclick="closeTimeModal()">Cancel</button>
+                <button class="modal-btn save" onclick="saveCustomSlot()">Save Slot</button>
             </div>
         </div>
-
     </div>
 
-    <!-- 5. FOOTER & ACCESS TRIPPERS -->
+    <div class="time-modal" id="adminActionModal">
+        <div class="time-modal-content" style="max-width: 340px;">
+            <h3 style="margin:0; color:#1e293b; text-align:center;" id="adminModalPlayerName">Manage Player</h3>
+            <div style="font-size:12px; color:#64748b; text-align:center; margin-top:4px;" id="adminModalPlayerMeta"></div>
+            <div class="admin-action-box">
+                <button class="admin-ctrl-btn swap" onclick="fireAdminAction('SWAP')">🔄 Move Lineup status</button>
+                <button class="admin-ctrl-btn del" onclick="fireAdminAction('DELETE')">❌ Remove From Slot</button>
+                <button class="modal-btn cancel" style="margin-top:5px; text-transform:uppercase;" onclick="closeAdminModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
     <footer class="club-footer">
-        <div>© 2026 Barrio FC • Pitch Community System • Ground rules apply.</div>
-        <button id="adminLoginBtn" class="admin-lock-link" onclick="toggleAdminMode()">Organizers Area</button>
+        <div class="footer-left-txt">© 2026 Barrio FC. Pitch fees settled prior to kickoff.</div>
+        <div class="footer-nav-links">
+            <button id="adminLoginBtn" class="footer-link-item" onclick="toggleAdminMode()">🛡️ Organizers Portal</button>
+            <span style="color: #334155;">|</span>
+            <a href="https://www.facebook.com/profile.php?id=61591106954120" target="_blank" class="footer-link-item">Community Hub</a>
+        </div>
     </footer>
 
     <script>
+        // ==========================================
+        //  SELF-HOSTED API ON TOSHIBA NB500 (DEBIAN)
+        // ==========================================
+        const API_URL = "https://explorer-legs-tub-cited.trycloudflare.com"; 
+        const WS_URL = API_URL.replace('https://', 'wss://').replace('http://', 'ws://');
+
         let currentSessionId = '';
         let isAdmin = false;
-        
-        // YOUR EXCLUSIVE PASSKEY LINK (Change '1234' to whatever pin you want)
+        let isSystemLocked = false; 
+        let globalPlayers = [];
+        let globalOpenSchedule = {};
+        let activeModalTargetDay = ''; 
+        let activeAdminPlayerId = null; 
+        let customActiveDays = new Set(); 
+        let socket = null;
+
+        const FEE_PER_PLAYER = 200;
         const ADMIN_SECRET = '1234';
-
-        // Base Session Blueprints
-        let scheduleData = {
-            'sun_am': { day: 'sunday', name: 'Sunday Morning', time: '6:00 AM - 8:00 AM' },
-            'sun_pm': { day: 'sunday', name: 'Sunday Evening', time: '6:00 PM - 8:00 PM' },
-            'mon_pm1': { day: 'monday', name: 'Monday Early Night', time: '7:00 PM - 9:00 PM' },
-            'mon_pm2': { day: 'monday', name: 'Monday Late Night', time: '9:00 PM - 11:00 PM' }
-        };
-
         const availableColors = ['WHITE', 'RED', 'BLUE', 'BLACK'];
 
-        // Core initialization databases
-        if (!localStorage.getItem('barrio_schedule_db')) {
-            localStorage.setItem('barrio_schedule_db', JSON.stringify(scheduleData));
+        function populateTimeDropdowns() {
+            const startH = document.getElementById('startHour');
+            const endH = document.getElementById('endHour');
+            startH.innerHTML = ''; endH.innerHTML = '';
+            for(let i=1; i<=12; i++) {
+                let hr = i + ":00";
+                startH.innerHTML += `<option value="${hr}">${hr}</option>`;
+                endH.innerHTML += `<option value="${hr}">${hr}</option>`;
+            }
         }
-        if (!localStorage.getItem('football_parqal_db')) {
-            localStorage.setItem('football_parqal_db', JSON.stringify([]));
+
+        async function initSystem() {
+            populateTimeDropdowns();
+            await fetchInitialData();
+            connectRealtimeWebSocket();
+        }
+
+        // --- HTTP INITIAL DATA FETCH ---
+        async function fetchInitialData() {
+            try {
+                const res = await fetch(`${API_URL}/api/data`);
+                const data = await res.json();
+                handleDataState(data);
+            } catch (err) {
+                console.error("Failed to connect to API:", err);
+                document.getElementById('triggerBtn').innerText = "Offline / Connecting...";
+            }
+        }
+
+        // --- REALTIME WEBSOCKET SUBSCRIPTION (NO POLLING REQUIRED) ---
+        function connectRealtimeWebSocket() {
+            try {
+                socket = new WebSocket(WS_URL);
+
+                socket.onmessage = (event) => {
+                    const message = JSON.parse(event.data);
+                    if (message.type === 'SYNC_DATA') {
+                        handleDataState(message.data);
+                    }
+                };
+
+                socket.onclose = () => {
+                    // Reconnect automatically if dropped
+                    setTimeout(connectRealtimeWebSocket, 3000);
+                };
+            } catch (e) {
+                console.error("WS error:", e);
+            }
+        }
+
+        function handleDataState(data) {
+            globalPlayers = data.players || [];
+            globalOpenSchedule = {};
+            isSystemLocked = data.isLocked || false;
+
+            const schedules = data.openSchedules || [];
+            schedules.forEach(s => {
+                const dayName = s.day.toLowerCase();
+                globalOpenSchedule[s.id] = { day: dayName, name: s.name, time: s.time };
+                customActiveDays.add(dayName);
+            });
+
+            if (!currentSessionId && Object.keys(globalOpenSchedule).length > 0) {
+                currentSessionId = Object.keys(globalOpenSchedule)[0];
+            }
+
+            renderScheduleBoards();
+            renderRosters();
+        }
+
+        // --- UI & MODAL MANAGEMENT ---
+        function openAddDayModal() { document.getElementById('addDayModal').style.display = 'flex'; }
+        function closeAddDayModal() { document.getElementById('addDayModal').style.display = 'none'; }
+        function confirmAddDay() {
+            const chosenDay = document.getElementById('dayPickerSelect').value;
+            customActiveDays.add(chosenDay);
+            closeAddDayModal();
+            renderScheduleBoards();
+            openTimeModal(chosenDay);
+        }
+
+        function openTimeModal(day) {
+            activeModalTargetDay = day.toLowerCase();
+            const formattedDayName = activeModalTargetDay.charAt(0).toUpperCase() + activeModalTargetDay.slice(1);
+            document.getElementById('timeModalHeaderTitle').innerText = `Add Time Slot for ${formattedDayName}`;
+            document.getElementById('modalSlotName').value = '';
+            document.getElementById('timeModal').style.display = 'flex';
+        }
+        function closeTimeModal() { document.getElementById('timeModal').style.display = 'none'; }
+
+        async function saveCustomSlot() {
+            const name = document.getElementById('modalSlotName').value.trim();
+            if(!name) { alert("Please enter a title."); return; }
+            
+            const timeStr = `${document.getElementById('startHour').value} ${document.getElementById('startAmpm').value} - ${document.getElementById('endHour').value} ${document.getElementById('endAmpm').value}`;
+            const generatedId = 'custom_' + Date.now();
+            
+            closeTimeModal();
+            document.getElementById('triggerBtn').innerText = "Creating time slot...";
+
+            await fetch(`${API_URL}/api/addSlot`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: generatedId, day: activeModalTargetDay, name: name, time: timeStr })
+            });
+
+            currentSessionId = generatedId;
+        }
+
+        async function toggleSystemLockMode() {
+            const targetState = !isSystemLocked;
+            await fetch(`${API_URL}/api/toggleLock`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ isLocked: targetState })
+            });
         }
 
         function toggleAdminMode() {
@@ -274,336 +489,551 @@
                 if (challenge === ADMIN_SECRET) {
                     isAdmin = true;
                     document.getElementById('pageBody').classList.add('admin-mode');
-                    document.getElementById('adminLoginBtn').innerText = "🔴 Exit Admin Mode";
-                    alert("Admin clearance granted. Dynamic slot deletions and line-up modifier tools are now unlocked.");
-                } else if (challenge !== null) {
-                    alert("Incorrect secret key code.");
-                }
+                    document.getElementById('adminLoginBtn').innerText = "🛡️ Exit Admin Area";
+                } else if (challenge !== null) { alert("Incorrect secret key code."); }
             } else {
                 isAdmin = false;
                 document.getElementById('pageBody').classList.remove('admin-mode');
-                document.getElementById('adminLoginBtn').innerText = "Organizers Area";
+                document.getElementById('adminLoginBtn').innerText = "🛡️ Organizers Portal";
             }
             renderScheduleBoards();
             renderRosters();
         }
 
-        function switchView(targetTabId) {
-            document.querySelectorAll('.club-nav button').forEach(b => b.classList.remove('active-tab'));
-            document.getElementById(`tabBtn-${targetTabId}`).classList.add('active-tab');
+        function checkGKStatus() {
+            const chosenColor = document.getElementById('shirtColor').value;
+            const isGkCheckbox = document.getElementById('isGK');
+            const gkWarning = document.getElementById('gkWarning');
+            if (!chosenColor) return false;
 
-            document.querySelectorAll('.tab-content').forEach(view => view.classList.remove('active-view'));
-            document.getElementById(`viewContainer-${targetTabId}`).classList.add('active-view');
-            
-            if (targetTabId === 'register') {
-                adaptFormLimits();
+            const gkRegisteredCount = globalPlayers.filter(p => 
+                p.session === currentSessionId && p.color === chosenColor && p.status === 'MAIN' && p.name.includes('(GK)')
+            ).length;
+
+            if (gkRegisteredCount >= 1) {
+                isGkCheckbox.checked = false;
+                isGkCheckbox.disabled = true;
+                gkWarning.style.display = "block";
+                return true;
+            } else {
+                isGkCheckbox.disabled = false;
+                gkWarning.style.display = "none";
+                return false;
             }
+        }
+
+        function handleGKChange() {
+            const isGkCheckbox = document.getElementById('isGK');
+            const slotSelect = document.getElementById('slotCount');
+            if (isGkCheckbox.checked) {
+                slotSelect.value = "1";
+                slotSelect.disabled = true;
+            } else {
+                const chosenColor = document.getElementById('shirtColor').value;
+                const activeOnTeam = globalPlayers.filter(p => p.session === currentSessionId && p.color === chosenColor && p.status === 'MAIN').length;
+                if (activeOnTeam < 10) {
+                    slotSelect.disabled = false;
+                }
+            }
+            handleSlotChange();
         }
 
         function renderScheduleBoards() {
-            const scheds = JSON.parse(localStorage.getItem('barrio_schedule_db'));
-            const db = JSON.parse(localStorage.getItem('football_parqal_db'));
+            const boardContainer = document.getElementById('dynamicDaysBoard');
+            const triggerBtn = document.getElementById('triggerBtn');
+            if (!boardContainer) return;
             
-            const sunContainer = document.getElementById('slots-container-sunday');
-            const monContainer = document.getElementById('slots-container-monday');
-            
-            sunContainer.innerHTML = '';
-            monContainer.innerHTML = '';
+            boardContainer.innerHTML = '';
+            const scheduleKeys = Object.keys(globalOpenSchedule);
+            const dayGroups = {};
+            customActiveDays.forEach(d => { dayGroups[d] = []; });
 
-            // Ensure we have a valid selection fallback if currentSessionId is blank
-            const keys = Object.keys(scheds);
-            if (keys.length > 0 && (!currentSessionId || !scheds[currentSessionId])) {
-                currentSessionId = keys[0];
-            }
-
-            keys.forEach(id => {
-                const session = scheds[id];
-                const count = db.filter(p => p.session === id && p.status === 'MAIN').length;
-                
-                const activeClass = id === currentSessionId ? 'active' : '';
-                
-                const cardHtml = `
-                    <div class="session-card ${activeClass}" id="session_${id}" onclick="selectSession('${id}')">
-                        ${isAdmin ? `<button class="admin-card-del-btn" onclick="deleteSlot(event, '${id}')">×</button>` : ''}
-                        <div class="session-time">${session.name} <span class="live-pill">${count}/40</span></div>
-                        <div class="session-meta"><span>${session.time}</span></div>
-                    </div>
-                `;
-
-                if (session.day === 'sunday') {
-                    sunContainer.innerHTML += cardHtml;
-                } else {
-                    monContainer.innerHTML += cardHtml;
-                }
+            scheduleKeys.forEach(id => {
+                const session = globalOpenSchedule[id];
+                const dayKey = session.day || 'other';
+                if (!dayGroups[dayKey]) dayGroups[dayKey] = [];
+                dayGroups[dayKey].push({ id: id, ...session });
             });
 
-            if(scheds[currentSessionId]) {
-                document.getElementById('targetSessionLabel').innerText = scheds[currentSessionId].name;
-            } else {
-                document.getElementById('targetSessionLabel').innerText = "No active session selected";
-            }
-        }
+            Object.keys(dayGroups).forEach(day => {
+                const formattedDayName = day.charAt(0).toUpperCase() + day.slice(1);
+                
+                let cardsHtml = '';
+                dayGroups[day].forEach(session => {
+                    const count = globalPlayers.filter(p => p.session === session.id && p.status === 'MAIN').length;
+                    const activeClass = session.id === currentSessionId ? 'active' : '';
 
-        function addNewSlot(day) {
-            const name = prompt(`Enter Title for New ${day.toUpperCase()} Slot (e.g. Midnight Madness):`);
-            if (!name) return;
-            const time = prompt("Enter Session Time Frame Range (e.g. 11:00 PM - 1:00 AM):");
-            if (!time) return;
+                    cardsHtml += `
+                        <div class="session-card ${activeClass}" id="session_${session.id}" onclick="selectSession('${session.id}')">
+                            ${isAdmin ? `<button class="admin-card-del-btn" onclick="deleteSlot(event, '${session.id}')">×</button>` : ''}
+                            <div class="session-time">${session.name} <span class="live-pill">${count}/40</span></div>
+                            <div class="session-meta"><span>${session.time}</span></div>
+                        </div>
+                    `;
+                });
 
-            let scheds = JSON.parse(localStorage.getItem('barrio_schedule_db'));
-            const generatedId = 'custom_' + Date.now();
-
-            scheds[generatedId] = { day: day, name: name, time: time };
-            localStorage.setItem('barrio_schedule_db', JSON.stringify(scheds));
-            
-            currentSessionId = generatedId;
-            renderScheduleBoards();
-            renderRosters();
-            adaptFormLimits();
-        }
-
-        function deleteSlot(e, id) {
-            e.stopPropagation(); // Stop click handling trigger from opening slot selection
-            if (confirm("Are you sure you want to delete this custom time slot? All registered players inside will be wiped out.")) {
-                let scheds = JSON.parse(localStorage.getItem('barrio_schedule_db'));
-                let db = JSON.parse(localStorage.getItem('football_parqal_db'));
-
-                delete scheds[id];
-                db = db.filter(p => p.session !== id); // Purge matching player records
-
-                localStorage.setItem('barrio_schedule_db', JSON.stringify(scheds));
-                localStorage.setItem('football_parqal_db', JSON.stringify(db));
-
-                if (currentSessionId === id) {
-                    currentSessionId = Object.keys(scheds)[0] || '';
+                if (cardsHtml === '') {
+                    cardsHtml = '<span style="color:#94a3b8; font-size:12px; padding:10px; display:block; text-align:center; font-style:italic;">No slots created for this day yet.</span>';
                 }
 
-                renderScheduleBoards();
-                renderRosters();
-                adaptFormLimits();
+                const colHtml = `
+                    <div class="board-column" id="col-${day}">
+                        <div class="board-title">
+                            <span>📅 ${formattedDayName} Slots</span>
+                            ${isAdmin ? `<button class="day-del-btn admin-only" onclick="deleteEntireDay('${day}')" title="Delete day column">×</button>` : ''}
+                        </div>
+                        <div id="slots-container-${day}">${cardsHtml}</div>
+                        <button class="add-slot-btn admin-only" onclick="openTimeModal('${day}')">+ Add Time Slot</button>
+                    </div>
+                `;
+                boardContainer.innerHTML += colHtml;
+            });
+
+            const rosterColHtml = `
+                <div class="board-column roster-column">
+                    <div class="board-title"><span>📊 Live: <span id="liveCount">0</span>/40</span></div>
+                    <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+                        <div style="margin-bottom: 12px;">
+                            <div style="font-size: 12px; font-weight: bold; color: #16a34a; margin-bottom: 4px;">Main Roster</div>
+                            <div id="mainRosterContainer" class="roster-scroll"></div>
+                        </div>
+                        <div>
+                            <div style="font-size: 12px; font-weight: bold; color: #ea580c; margin-bottom: 4px;">Waitlist (<span id="waitlistCount">0</span>/10)</div>
+                            <div id="waitlistContainer" class="roster-scroll"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            boardContainer.innerHTML += rosterColHtml;
+
+            const lockBtn = document.getElementById('adminLockToggleBtn');
+            if (isSystemLocked) {
+                lockBtn.innerText = "🔓 Unlock Registration";
+                lockBtn.classList.add('locked');
+                triggerBtn.innerText = "🔒 Registration is Locked";
+                triggerBtn.disabled = true;
+                document.getElementById('regFormSection').style.display = 'none';
+                triggerBtn.classList.remove('form-open');
+                return;
+            } else {
+                lockBtn.innerText = "🔒 Lock Registration";
+                lockBtn.classList.remove('locked');
+            }
+
+            if (globalOpenSchedule[currentSessionId]) { 
+                const activeSessionPlayers = globalPlayers.filter(p => p.session === currentSessionId);
+                const mainCount = activeSessionPlayers.filter(p => p.status === 'MAIN').length;
+                const waitCount = activeSessionPlayers.filter(p => p.status === 'WAITLIST').length;
+
+                if (mainCount >= 40 && waitCount >= 10) {
+                    triggerBtn.innerText = `❌ Registration Full: ${globalOpenSchedule[currentSessionId].name}`;
+                    triggerBtn.disabled = true;
+                    document.getElementById('regFormSection').style.display = 'none';
+                    triggerBtn.classList.remove('form-open');
+                } else {
+                    triggerBtn.disabled = false;
+                    if (document.getElementById('regFormSection').style.display === 'block') {
+                        triggerBtn.innerText = `Close Form`;
+                    } else {
+                        triggerBtn.innerText = `📝 Register for: ${globalOpenSchedule[currentSessionId].name}`; 
+                    }
+                }
+            } else {
+                triggerBtn.innerText = "Select a time slot";
+                triggerBtn.disabled = false;
             }
         }
 
-        function modifyPlayer(playerIndexInGlobalDb) {
-            if (!isAdmin) return; // Enforce security constraint lock
-            
-            let db = JSON.parse(localStorage.getItem('football_parqal_db'));
-            const player = db[playerIndexInGlobalDb];
+        async function deleteEntireDay(day) {
+            if (confirm(`Delete all slots under ${day.toUpperCase()}?`)) {
+                customActiveDays.delete(day);
+                await fetch(`${API_URL}/api/deleteDay`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ day: day })
+                });
+            }
+        }
+
+        async function deleteSlot(e, id) {
+            e.stopPropagation();
+            if (confirm("Delete this custom time slot?")) {
+                await fetch(`${API_URL}/api/deleteSlot`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: id })
+                });
+                if (currentSessionId === id) currentSessionId = '';
+            }
+        }
+
+        function modifyPlayer(playerId) {
+            if (!isAdmin) return;
+            const player = globalPlayers.find(p => p.id.toString() === playerId.toString()); 
             if (!player) return;
 
-            const action = prompt(
-                `MANAGE PLAYER: "${player.name}" (${player.color} Team)\n\n` +
-                `Type "DELETE" to remove them from the list.\n` +
-                `Type "SWAP" to move them from ${player.status} to ${player.status === 'MAIN' ? 'WAITLIST' : 'MAIN'}.\n`
-            );
+            activeAdminPlayerId = playerId;
+            document.getElementById('adminModalPlayerName').innerText = player.name;
+            document.getElementById('adminModalPlayerMeta').innerHTML = player.referenceNumber && player.referenceNumber.startsWith('http') 
+                ? `<a href="${player.referenceNumber}" target="_blank" style="color:#2563eb; font-weight:600;">View Drive Screenshot ↗</a>` 
+                : `Status: ${player.referenceNumber || 'N/A'}`;
+            document.getElementById('adminActionModal').style.display = 'flex';
+        }
 
-            if (!action) return;
+        function closeAdminModal() {
+            document.getElementById('adminActionModal').style.display = 'none';
+            activeAdminPlayerId = null;
+        }
 
-            if (action.toUpperCase() === 'DELETE') {
-                db.splice(playerIndexInGlobalDb, 1);
-                localStorage.setItem('football_parqal_db', JSON.stringify(db));
-                alert("Player removed successfully.");
-            } else if (action.toUpperCase() === 'SWAP') {
-                player.status = player.status === 'MAIN' ? 'WAITLIST' : 'MAIN';
-                localStorage.setItem('football_parqal_db', JSON.stringify(db));
-                alert(`Player successfully shifted to ${player.status}`);
-            } else {
-                alert("Invalid option typed.");
+        async function fireAdminAction(subAction) {
+            if (!activeAdminPlayerId) return;
+            if (subAction === 'DELETE' && !confirm("Drop this player?")) return;
+            
+            const targetId = activeAdminPlayerId;
+            closeAdminModal();
+
+            await fetch(`${API_URL}/api/modifyPlayer`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: targetId, subAction: subAction })
+            });
+        }
+
+        function handleSlotChange() { updateFriendFields(); updateGCashCalculation(); }
+        function updateGCashCalculation() {
+            const slots = parseInt(document.getElementById('slotCount').value) || 1;
+            document.getElementById('gcashTotalText').innerText = `₱${slots * FEE_PER_PLAYER}`;
+        }
+
+        function evaluateSubmitLockState() {
+            const colorSelect = document.getElementById('shirtColor');
+            const submitBtn = document.getElementById('submitBtn');
+            const policyCheckbox = document.getElementById('policyAgreement');
+            const waitlistCheckbox = document.getElementById('waitlistAgreement');
+            
+            if (!currentSessionId || !globalOpenSchedule[currentSessionId]) return;
+
+            if (isSystemLocked) {
+                submitBtn.disabled = true;
+                submitBtn.innerText = "🔒 Registration is Locked";
+                submitBtn.style.backgroundColor = "#94a3b8";
+                return;
             }
 
-            renderRosters();
-            adaptFormLimits();
+            const sessionPlayers = globalPlayers.filter(p => p.session === currentSessionId);
+            const activeSessionPlayers = sessionPlayers.filter(p => p.status === 'MAIN');
+            const waitlistedSessionPlayers = sessionPlayers.filter(p => p.status === 'WAITLIST');
+            const totalWaitlistCount = waitlistedSessionPlayers.length;
+
+            let teamCounts = { WHITE: 0, RED: 0, BLUE: 0, BLACK: 0 };
+            activeSessionPlayers.forEach(p => { if (teamCounts[p.color] !== undefined) teamCounts[p.color]++; });
+
+            const chosenColor = colorSelect.value || availableColors[0];
+            const activeOnTeam = teamCounts[chosenColor];
+
+            if (activeOnTeam >= 10 && totalWaitlistCount >= 10) {
+                submitBtn.disabled = true;
+                submitBtn.innerText = "❌ Waitlist Full for this Session (10/10)";
+                submitBtn.style.backgroundColor = "#94a3b8";
+                return;
+            }
+
+            const isWaitlistTx = activeOnTeam >= 10;
+
+            if (isWaitlistTx) {
+                submitBtn.innerText = "Join Waitlist Queue";
+                submitBtn.style.backgroundColor = "#ea580c";
+                submitBtn.disabled = !waitlistCheckbox.checked;
+            } else {
+                submitBtn.innerText = "Confirm Registration";
+                submitBtn.style.backgroundColor = "#2563eb";
+                submitBtn.disabled = !policyCheckbox.checked;
+            }
         }
 
         function adaptFormLimits() {
-            const scheds = JSON.parse(localStorage.getItem('barrio_schedule_db'));
-            if (!currentSessionId || !scheds[currentSessionId]) return;
-
-            const db = JSON.parse(localStorage.getItem('football_parqal_db'));
-            const sessionPlayers = db.filter(p => p.session === currentSessionId && p.status === 'MAIN');
+            if (!currentSessionId || !globalOpenSchedule[currentSessionId]) return;
             
             const colorSelect = document.getElementById('shirtColor');
             const slotSelect = document.getElementById('slotCount');
             const submitBtn = document.getElementById('submitBtn');
-            
+            const triggerBtn = document.getElementById('triggerBtn');
+            const paymentPanel = document.getElementById('paymentPanel');
+            const screenshotInput = document.getElementById('gcashScreenshot');
+            const policyWrapperZone = document.getElementById('policyWrapperZone');
+            const policyCheckbox = document.getElementById('policyAgreement');
+            const waitlistPolicyWrapperZone = document.getElementById('waitlistPolicyWrapperZone');
+            const waitlistCheckbox = document.getElementById('waitlistAgreement');
             const previousSelection = colorSelect.value;
-            
-            let teamCounts = { WHITE: 0, RED: 0, BLUE: 0, BLACK: 0 };
-            sessionPlayers.forEach(p => {
-                if (teamCounts[p.color] !== undefined) teamCounts[p.color]++;
-            });
+            const previousSlotVal = slotSelect.value;
 
-            colorSelect.innerHTML = '';
-            let openTeamsCount = 0;
-
-            availableColors.forEach(color => {
-                const currentCount = teamCounts[color];
-                if (currentCount < 10) {
-                    openTeamsCount++;
-                    const spotsLeft = 10 - currentCount;
-                    const option = document.createElement('option');
-                    option.value = color;
-                    option.innerText = `${color === 'WHITE' ? '⬜' : color === 'RED' ? '🟥' : color === 'BLUE' ? '🟦' : '⬛'} ${color} Team (${spotsLeft} spots left)`;
-                    colorSelect.appendChild(option);
-                }
-            });
-
-            if (openTeamsCount === 0) {
-                colorSelect.innerHTML = '<option value="">⚠️ FULL HOUSE — All teams are at 10/10</option>';
-                colorSelect.disabled = true;
-                slotSelect.innerHTML = '<option value="0">0 slots</option>';
-                slotSelect.disabled = true;
-                submitBtn.disabled = true;
-                submitBtn.innerText = "Session Full";
+            if (isSystemLocked) {
+                triggerBtn.innerText = "🔒 Registration is Locked";
+                triggerBtn.disabled = true;
+                document.getElementById('regFormSection').style.display = 'none';
                 return;
             }
 
+            const sessionPlayers = globalPlayers.filter(p => p.session === currentSessionId);
+            const activeSessionPlayers = sessionPlayers.filter(p => p.status === 'MAIN');
+            const waitlistedSessionPlayers = sessionPlayers.filter(p => p.status === 'WAITLIST');
+            const totalWaitlistCount = waitlistedSessionPlayers.length;
+
+            let teamCounts = { WHITE: 0, RED: 0, BLUE: 0, BLACK: 0 };
+            activeSessionPlayers.forEach(p => { if (teamCounts[p.color] !== undefined) teamCounts[p.color]++; });
+
             colorSelect.disabled = false;
             slotSelect.disabled = false;
-            submitBtn.disabled = false;
-            submitBtn.innerText = "Confirm Squad Entry";
 
-            if (previousSelection && teamCounts[previousSelection] < 10) {
+            colorSelect.innerHTML = '';
+            let availableTeamsExist = false;
+
+            availableColors.forEach(color => {
+                const currentCount = teamCounts[color];
+
+                if (currentCount < 10) {
+                    colorSelect.innerHTML += `<option value="${color}">${color} Team (${10 - currentCount} spots left)</option>`;
+                    availableTeamsExist = true;
+                } else if (totalWaitlistCount < 10) {
+                    colorSelect.innerHTML += `<option value="${color}" style="color: #ea580c;">⚠️ ${color} Team (Waitlist Only - ${10 - totalWaitlistCount} spots left in queue)</option>`;
+                    availableTeamsExist = true;
+                } else {
+                    colorSelect.innerHTML += `<option value="${color}" disabled style="color: #94a3b8;">❌ ${color} Team (Waitlist Full - 10/10)</option>`;
+                }
+            });
+
+            if (previousSelection && !colorSelect.querySelector(`option[value="${previousSelection}"]:disabled`)) {
                 colorSelect.value = previousSelection;
             }
 
-            const chosenColor = colorSelect.value;
-            if (!chosenColor) return;
-            
-            const selectedTeamOpenSpots = 10 - teamCounts[chosenColor];
+            const chosenColor = colorSelect.value || availableColors[0];
+            const activeOnTeam = teamCounts[chosenColor];
             
             slotSelect.innerHTML = '';
-            for (let i = 1; i <= selectedTeamOpenSpots; i++) {
-                const option = document.createElement('option');
-                option.value = i;
-                option.innerText = i === 1 ? `1 slot (Just me)` : `${i} slots`;
-                slotSelect.appendChild(option);
+
+            if (!availableTeamsExist) {
+                triggerBtn.innerText = `❌ Registration Full: ${globalOpenSchedule[currentSessionId].name}`;
+                triggerBtn.disabled = true;
+                document.getElementById('regFormSection').style.display = 'none';
+                return;
+            }
+            
+            if (activeOnTeam < 10) {
+                const spotsRemaining = 10 - activeOnTeam;
+                
+                for (let i = 1; i <= spotsRemaining; i++) {
+                    slotSelect.innerHTML += `<option value="${i}">${i === 1 ? '1 slot (Just me)' : i + ' slots'}</option>`;
+                }
+                
+                if (previousSlotVal && parseInt(previousSlotVal) <= spotsRemaining) {
+                    slotSelect.value = previousSlotVal;
+                }
+                
+                paymentPanel.style.display = "block";
+                screenshotInput.required = true;
+                policyWrapperZone.style.display = "block";
+                policyCheckbox.required = true;
+                
+                waitlistPolicyWrapperZone.style.display = "none";
+                waitlistCheckbox.required = false;
+                waitlistCheckbox.checked = false;
+            } else if (totalWaitlistCount < 10) {
+                slotSelect.innerHTML = `<option value="1">1 waitlist slot</option>`;
+                slotSelect.value = "1";
+                slotSelect.disabled = true;
+                
+                paymentPanel.style.display = "none";
+                screenshotInput.required = false;
+                screenshotInput.value = ""; 
+                policyWrapperZone.style.display = "none";
+                policyCheckbox.required = false;
+                policyCheckbox.checked = false;
+
+                waitlistPolicyWrapperZone.style.display = "block";
+                waitlistCheckbox.required = true;
+            } else {
+                slotSelect.disabled = true;
+                paymentPanel.style.display = "none";
+                policyWrapperZone.style.display = "none";
+                waitlistPolicyWrapperZone.style.display = "none";
             }
 
-            updateFriendFields();
+            checkGKStatus(); 
+            handleGKChange();
+            evaluateSubmitLockState();
         }
 
         function updateFriendFields() {
             const totalSlots = parseInt(document.getElementById('slotCount').value) || 1;
-            const container = document.getElementById('friendFieldsContainer');
+            const container = document.getElementById('friendFieldsContainer'); 
             container.innerHTML = ''; 
-
             for (let i = 1; i < totalSlots; i++) {
-                const div = document.createElement('div');
-                div.className = 'friend-input';
-                div.innerHTML = `
-                    <label>Player ${i + 1} Full Name:</label>
-                    <input type="text" class="friend-name-input" required placeholder="Squad mate's name">
-                `;
-                container.appendChild(div);
+                container.innerHTML += `<div class="friend-input"><label>Player ${i + 1} Full Name:</label><input type="text" class="friend-name-input" required placeholder="Squad mate's name"></div>`;
             }
         }
 
-        function selectSession(id) {
-            currentSessionId = id;
-            renderScheduleBoards();
-            renderRosters();
-            adaptFormLimits();
+        function toggleRegisterForm() {
+            if (isSystemLocked) return;
+            const formZone = document.getElementById('regFormSection');
+            const btn = document.getElementById('triggerBtn');
+            if (formZone.style.display === 'block') { formZone.style.display = 'none'; btn.classList.remove('form-open'); } 
+            else { formZone.style.display = 'block'; btn.classList.add('form-open'); formZone.scrollIntoView({ behavior: 'smooth' }); adaptFormLimits(); }
         }
 
-        function handleSignup(e) {
+        function selectSession(id) { 
+            currentSessionId = id; 
+            renderScheduleBoards(); 
+            renderRosters(); 
+            if (document.getElementById('regFormSection').style.display === 'block') adaptFormLimits(); 
+        }
+
+        async function handleSignup(e) {
             e.preventDefault();
-            
+            if (isSystemLocked) {
+                alert("🔒 Registration is currently locked by the organizers.");
+                return;
+            }
+
             const leaderName = document.getElementById('leaderName').value.trim();
+            const fbLink = document.getElementById('fbLink').value.trim();
             const shirtColor = document.getElementById('shirtColor').value;
+            const fileInput = document.getElementById('gcashScreenshot');
+            const policyCheckbox = document.getElementById('policyAgreement');
+            const waitlistCheckbox = document.getElementById('waitlistAgreement');
             const friendInputs = document.querySelectorAll('.friend-name-input');
-            
             if (!shirtColor) return;
 
-            let newPlayers = [leaderName];
-            friendInputs.forEach(input => {
-                if(input.value.trim() !== "") newPlayers.push(input.value.trim());
-            });
+            const sessionPlayers = globalPlayers.filter(p => p.session === currentSessionId);
+            const activeSessionPlayers = sessionPlayers.filter(p => p.status === 'MAIN');
+            let teamCounts = { WHITE: 0, RED: 0, BLUE: 0, BLACK: 0 };
+            activeSessionPlayers.forEach(p => { if (teamCounts[p.color] !== undefined) teamCounts[p.color]++; });
+            const isWaitlistTx = teamCounts[shirtColor] >= 10;
 
-            let db = JSON.parse(localStorage.getItem('football_parqal_db'));
-            let existingSessionPlayers = db.filter(p => p.session === currentSessionId);
-
-            for (let name of newPlayers) {
-                let standardizedInputName = name.toLowerCase().replace(/\s+/g, ' ');
-                let isDuplicate = existingSessionPlayers.some(existingPlayer => {
-                    return existingPlayer.name.toLowerCase().replace(/\s+/g, ' ') === standardizedInputName;
-                });
-
-                if (isDuplicate) {
-                    alert(`❌ Registration Blocked!\n"${name}" is already registered for this slot.`);
+            if (!isWaitlistTx) {
+                if (!policyCheckbox.checked) {
+                    alert("❌ You must read and agree to the Session Terms & Waiver to complete your registration.");
+                    return;
+                }
+                if (!fileInput.files || fileInput.files.length === 0) {
+                    alert("❌ Please attach a screenshot file of your payment to proceed.");
+                    return;
+                }
+            } else {
+                if (!waitlistCheckbox.checked) {
+                    alert("❌ You must acknowledge the Waitlist Policy and Waiver before joining the queue.");
                     return;
                 }
             }
 
-            newPlayers.forEach(name => {
-                db.push({
+            const isGK = document.getElementById('isGK').checked;
+            let finalLeaderName = leaderName;
+            if (isGK) finalLeaderName += ' (GK)';
+
+            let newPlayers = [finalLeaderName];
+            friendInputs.forEach(input => { if(input.value.trim() !== "") newPlayers.push(input.value.trim()); });
+
+            const nameRegex = /^[A-Za-zÀ-ÖØ-öø-ÿ\s.\-]+$/;
+            for (let name of newPlayers) {
+                let cleanCheckName = name.replace(' (GK)', '');
+                if (!nameRegex.test(cleanCheckName)) {
+                    alert(`❌ Invalid Name: "${cleanCheckName}"\n\nPlayer names must only contain letters.`);
+                    return;
+                }
+            }
+
+            const simplifiedNewNames = newPlayers.map(name => name.toLowerCase().replace(/\s+/g, ' '));
+            if (new Set(simplifiedNewNames).size !== newPlayers.length) {
+                alert("❌ Duplicate Entry Blocked in this transaction."); return;
+            }
+
+            let existingSessionPlayers = globalPlayers.filter(p => p.session === currentSessionId);
+            for (let name of newPlayers) {
+                if (existingSessionPlayers.some(ep => ep.name.toLowerCase().replace(/\s+/g, ' ') === name.toLowerCase().replace(/\s+/g, ' '))) {
+                    alert(`❌ Blocked! "${name.replace(' (GK)', '')}" is already registered.`); return;
+                }
+            }
+
+            const currentMainCount = globalPlayers.filter(p => p.session === currentSessionId && p.color === shirtColor && p.status === 'MAIN').length;
+            const payloadPlayers = newPlayers.map((name, index) => {
+                return {
                     session: currentSessionId,
                     name: name,
                     color: shirtColor,
-                    status: 'MAIN'
+                    status: (currentMainCount + index) < 10 ? 'MAIN' : 'WAITLIST',
+                    paymentMode: isWaitlistTx ? 'WAITLIST_QUEUE' : 'GCASH',
+                    fbLink: index === 0 ? fbLink : "" 
+                };
+            });
+
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('submitBtn').innerText = "Submitting registration...";
+
+            const formData = new FormData();
+            formData.append('players', JSON.stringify(payloadPlayers));
+            if (!isWaitlistTx && fileInput.files.length > 0) {
+                formData.append('receipt', fileInput.files[0]);
+            }
+
+            try {
+                const res = await fetch(`${API_URL}/api/register`, {
+                    method: 'POST',
+                    body: formData
                 });
-            });
+                const result = await res.json();
 
-            localStorage.setItem('football_parqal_db', JSON.stringify(db));
-            
-            document.getElementById('signupForm').reset();
-            
-            renderRosters();
-            adaptFormLimits();
-            alert("Entry Saved! Roster verification succeeded.");
-        }
-
-        function renderRosters() {
-            const db = JSON.parse(localStorage.getItem('football_parqal_db'));
-            const mainContainer = document.getElementById('mainRosterContainer');
-            const waitContainer = document.getElementById('waitlistContainer');
-            
-            mainContainer.innerHTML = '';
-            waitContainer.innerHTML = '';
-
-            let mainCount = 0;
-            let waitCount = 0;
-
-            // Map out array records tracking real global sequence indices so admin changes point to correct entries
-            db.forEach((player, globalIndex) => {
-                if (player.session !== currentSessionId) return;
-
-                const badgeHtml = `
-                    <span class="player-badge badge-${player.color}" onclick="modifyPlayer(${globalIndex})">
-                        ${player.status === 'WAITLIST' ? `${waitCount + 1}. ` : ''}${player.name}
-                    </span>
-                `;
-
-                if (player.status === 'MAIN') {
-                    mainContainer.innerHTML += badgeHtml;
-                    mainCount++;
+                if (result.success) {
+                    document.getElementById('signupForm').reset();
+                    toggleRegisterForm();
+                    alert(isWaitlistTx ? "Successfully joined the waitlist queue!" : "Registration confirmed and synced!");
                 } else {
-                    waitContainer.innerHTML += badgeHtml;
-                    waitCount++;
+                    alert("Error registering: " + (result.error || "Unknown error"));
                 }
-            });
-
-            document.getElementById('liveCount').innerText = mainCount;
-
-            if(mainCount === 0) mainContainer.innerHTML = '<span style="color:#475569; font-size:11px; padding:5px; display:block;">Empty slot.</span>';
-            if(waitCount === 0) waitContainer.innerHTML = '<span style="color:#475569; font-size:11px; padding:5px; display:block;">Empty queue.</span>';
-        }
-
-        function clearActiveSession() {
-            const scheds = JSON.parse(localStorage.getItem('barrio_schedule_db'));
-            if(confirm(`Wipe out all registered entries inside: ${scheds[currentSessionId].name}?`)) {
-                let db = JSON.parse(localStorage.getItem('football_parqal_db'));
-                db = db.filter(p => p.session !== currentSessionId);
-                localStorage.setItem('football_parqal_db', JSON.stringify(db));
-                renderScheduleBoards();
-                renderRosters();
-                adaptFormLimits();
+            } catch (err) {
+                alert("Submission failed. Server might be offline.");
+            } finally {
+                document.getElementById('submitBtn').disabled = false;
             }
         }
 
-        // Run Initializers
-        renderScheduleBoards();
-        renderRosters();
+        function renderRosters() {
+            const mainContainer = document.getElementById('mainRosterContainer');
+            const waitContainer = document.getElementById('waitlistContainer');
+            const waitlistCountElem = document.getElementById('waitlistCount');
+            if (!mainContainer || !waitContainer) return;
+            
+            mainContainer.innerHTML = ''; waitContainer.innerHTML = '';
+            let mainCount = 0; let waitCount = 0;
+            const activePlayers = globalPlayers.filter(p => p.session === currentSessionId);
+
+            const colorOrder = { 'WHITE': 1, 'RED': 2, 'BLUE': 3, 'BLACK': 4 };
+            activePlayers.sort((a, b) => {
+                if (colorOrder[a.color] !== colorOrder[b.color]) return colorOrder[a.color] - colorOrder[b.color];
+                return String(a.id || '').localeCompare(String(b.id || ''), undefined, { numeric: true, sensitivity: 'base' });
+            });
+
+            activePlayers.forEach(player => {
+                const badgeHtml = `<span class="player-badge badge-${player.color}" onclick="modifyPlayer('${player.id}')">${player.status === 'WAITLIST' ? (waitCount + 1) + '. ' : ''}${player.name}</span>`;
+                if (player.status === 'MAIN') { mainContainer.innerHTML += badgeHtml; mainCount++; } 
+                else { waitContainer.innerHTML += badgeHtml; waitCount++; }
+            });
+
+            document.getElementById('liveCount').innerText = mainCount;
+            if (waitlistCountElem) waitlistCountElem.innerText = waitCount;
+
+            if(mainCount === 0) mainContainer.innerHTML = '<span style="color:#94a3b8; font-size:11px; padding:5px; display:block;">Empty slot.</span>';
+            if(waitCount === 0) waitContainer.innerHTML = '<span style="color:#94a3b8; font-size:11px; padding:5px; display:block;">Empty queue.</span>';
+        }
+
+        async function clearActiveSession() {
+            if(confirm("Wipe out entries?")) {
+                await fetch(`${API_URL}/api/clearRoster`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session: currentSessionId })
+                });
+            }
+        }
+        window.onload = function() { initSystem(); };
     </script>
 </body>
 </html>
