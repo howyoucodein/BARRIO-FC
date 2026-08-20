@@ -346,7 +346,7 @@
 
     <script>
         // ==========================================
-        //  SELF-HOSTED API ON TOSHIBA NB500 (DEBIAN)
+        //  SELF-HOSTED API ON TOSHIBA NB500 (CLOUDFLARE TUNNEL)
         // ==========================================
         const API_URL = "https://insulation-apr-locate-ranging.trycloudflare.com"; 
         const WS_URL = API_URL.replace('https://', 'wss://').replace('http://', 'ws://');
@@ -394,7 +394,7 @@
             }
         }
 
-        // --- REALTIME WEBSOCKET SUBSCRIPTION (NO POLLING REQUIRED) ---
+        // --- REALTIME WEBSOCKET SUBSCRIPTION ---
         function connectRealtimeWebSocket() {
             try {
                 socket = new WebSocket(WS_URL);
@@ -407,7 +407,6 @@
                 };
 
                 socket.onclose = () => {
-                    // Reconnect automatically if dropped
                     setTimeout(connectRealtimeWebSocket, 3000);
                 };
             } catch (e) {
@@ -901,10 +900,20 @@
             const policyCheckbox = document.getElementById('policyAgreement');
             const waitlistCheckbox = document.getElementById('waitlistAgreement');
             const friendInputs = document.querySelectorAll('.friend-name-input');
+            const isGK = document.getElementById('isGK').checked;
+
             if (!shirtColor) return;
 
             const sessionPlayers = globalPlayers.filter(p => p.session === currentSessionId);
             const activeSessionPlayers = sessionPlayers.filter(p => p.status === 'MAIN');
+            
+            // --- 🧤 GOALKEEPER REQUIREMENT GUARDRAIL (9+ players without GK) ---
+            const hasExistingGK = activeSessionPlayers.some(p => p.name.toUpperCase().includes('(GK)') || p.name.toUpperCase().includes('GK'));
+            if (activeSessionPlayers.length >= 9 && !hasExistingGK && !isGK) {
+                alert("🧤 Goalkeeper Slot Required!\n\n9 players are registered for this session without a GK. Further registrations are restricted to Goalkeepers only until a GK signs up.");
+                return;
+            }
+
             let teamCounts = { WHITE: 0, RED: 0, BLUE: 0, BLACK: 0 };
             activeSessionPlayers.forEach(p => { if (teamCounts[p.color] !== undefined) teamCounts[p.color]++; });
             const isWaitlistTx = teamCounts[shirtColor] >= 10;
@@ -925,7 +934,6 @@
                 }
             }
 
-            const isGK = document.getElementById('isGK').checked;
             let finalLeaderName = leaderName;
             if (isGK) finalLeaderName += ' (GK)';
 
