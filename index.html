@@ -1,1047 +1,445 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barrio FC - Matchday Dashboard</title>
-    <style>
-        /* CSS RESET & CORE STYLES */
-        html, body { margin: 0; padding: 0; height: 100%; display: flex; flex-direction: column; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f5f7fb; color: #333; }
-        
-        /* BLACK HEADER */
-        .club-header { background-color: #000000; color: #ffffff; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
-        .header-left { display: flex; align-items: center; gap: 12px; }
-        .club-logo-frame { width: 36px; height: 36px; border-radius: 50%; background-color: #1e293b; border: 1px solid #334155; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        .club-logo-img { width: 100%; height: 100%; object-fit: cover; }
-        .club-logo-text { font-size: 22px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; display: flex; align-items: center; }
+cat << 'EOF' > ~/barriofc-server/server.js
+const express = require('express');
+const cors = require('cors');
+const http = require('http');
+const WebSocket = require('ws');
+const Database = require('better-sqlite3');
+const multer = require('multer');
+const { google } = require('googleapis');
+const stream = require('stream');
+require('dotenv').config();
 
-        /* MAIN CONTENT CONTAINER */
-        .main-wrapper { max-width: 1200px; width: 100%; margin: 30px auto; padding: 0 20px; box-sizing: border-box; flex: 1; }
-        
-        /* DYNAMIC GRID TOP BOARD */
-        .top-board { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 25px; }
-        
-        .board-column { background: #e2e8f0; padding: 15px; border-radius: 12px; display: flex; flex-direction: column; box-sizing: border-box; min-height: 240px; position: relative; }
-        .roster-column { background: white; border: 2px solid #cbd5e1; }
-        .board-title { margin: 0 0 12px 0; font-size: 16px; color: #1e293b; font-weight: 700; text-align: center; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid rgba(0,0,0,0.05); padding-bottom: 8px; height: 24px; line-height: 24px; display: flex; justify-content: space-between; align-items: center; }
-        
-        .session-card { background: white; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 2px solid transparent; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.02); min-height: 64px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; position: relative; }
-        .session-card:last-child { margin-bottom: 0; }
-        .session-card:hover { border-color: #cbd5e1; transform: translateY(-1px); }
-        .session-card.active { border-color: #2563eb; background-color: #eff6ff; box-shadow: 0 4px 12px rgba(37,99,235,0.1); }
-        
-        .session-time { font-weight: 700; color: #0f172a; font-size: 14px; display: flex; justify-content: space-between; align-items: center; padding-right: 20px; }
-        .session-meta { font-size: 11px; color: #64748b; margin-top: 4px; display: flex; justify-content: space-between; }
-        .live-pill { background: #e2e8f0; color: #475569; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
-        .session-card.active .live-pill { background: #2563eb; color: white; }
+const app = express();
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
 
-        /* ACTION TRIGGER BUTTON */
-        .trigger-container { text-align: center; margin-bottom: 25px; }
-        .action-trigger-btn { background-color: #1e293b; color: white; border: none; padding: 15px 40px; font-size: 16px; font-weight: 700; border-radius: 8px; cursor: pointer; transition: all 0.2s; width: auto; display: inline-block; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .action-trigger-btn:hover { background-color: #0f172a; transform: translateY(-1px); }
-        .action-trigger-btn.form-open { background-color: #64748b; }
-        .action-trigger-btn:disabled { background-color: #94a3b8 !important; cursor: not-allowed !important; transform: none !important; box-shadow: none !important; }
+app.use(cors());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-        /* BOTTOM COLLAPSIBLE REGISTRATION FORM */
-        .form-section { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); display: none; max-width: 600px; margin: 0 auto 30px auto; border-top: 4px solid #2563eb; }
-        label { font-weight: 600; display: block; margin-top: 15px; color: #475569; }
-        input, select, .submit-btn { width: 100%; padding: 12px; margin-top: 6px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
-        input:focus, select:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
-        select:disabled { background: #f1f5f9; color: #94a3b8; cursor: not-allowed; }
-        
-        .submit-btn { background-color: #2563eb; color: white; border: none; font-weight: 600; margin-top: 25px; cursor: pointer; transition: background 0.2s; }
-        .submit-btn:hover { background-color: #1d4ed8; }
-        .submit-btn:disabled { background-color: #cbd5e1; color: #94a3b8; cursor: not-allowed; }
-        
-        /* FRIEND INPUT GRID */
-        #friendFieldsContainer { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 5px; }
-        @media (min-width: 480px) { #friendFieldsContainer { grid-template-columns: 1fr 1fr; } }
-        .friend-input { background-color: #f8fafc; border-left: 4px solid #3b82f6; padding: 10px; border-radius: 0 6px 6px 0; box-sizing: border-box; }
-        .friend-input label { margin-top: 0; font-size: 12px; }
-        .friend-input input { padding: 8px; margin-top: 4px; }
+const upload = multer({ storage: multer.memoryStorage() });
 
-        /* POLICY NOTICE BOX STYLES */
-        .policy-box { background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 15px; margin-top: 20px; font-size: 13px; color: #78350f; line-height: 1.5; }
-        .policy-title { font-weight: 700; font-size: 14px; color: #92400e; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
-        .policy-section-header { font-weight: 700; color: #92400e; margin-top: 10px; margin-bottom: 2px; }
+// --- 1. SQLITE SETUP ---
+const db = new Database('barriofc.db');
 
-        /* WAITLIST NOTICE BOX STYLES */
-        .waitlist-policy-box { background-color: #fff7ed; border: 1px solid #ffedd5; border-radius: 8px; padding: 15px; margin-top: 20px; font-size: 13px; color: #9a3412; line-height: 1.5; }
-        .waitlist-policy-title { font-weight: 700; font-size: 14px; color: #c2410c; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+db.exec(`
+  CREATE TABLE IF NOT EXISTS schedules (
+    id TEXT PRIMARY KEY,
+    day TEXT NOT NULL,
+    name TEXT NOT NULL,
+    time TEXT NOT NULL
+  );
 
-        /* GCASH PANEL STYLES */
-        .gcash-panel { background: #f0f7ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 20px; margin-top: 20px; box-sizing: border-box; }
-        .gcash-title { font-weight: 800; color: #1e40af; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
-        
-        .gcash-content-split { display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 15px; }
-        @media (min-width: 480px) { .gcash-content-split { grid-template-columns: 1.1fr 0.9fr; align-items: center; } }
-        
-        .gcash-info-box { background: white; padding: 12px; border-radius: 6px; border: 1px solid #dbeafe; font-size: 13px; color: #1e293b; line-height: 1.5; box-sizing: border-box; }
-        .gcash-info-box strong { color: #2563eb; }
-        
-        .gcash-qr-container { background: white; border: 1px solid #dbeafe; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box; min-height: 180px; }
-        .gcash-qr-img { max-width: 100%; max-height: 190px; object-fit: contain; border-radius: 4px; }
-        
-        /* ROSTER BADGES & ADMIN INDICATORS */
-        .player-badge { display: inline-block; padding: 5px 10px; margin: 3px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1px solid #cbd5e1; position: relative; }
-        .admin-mode .player-badge { cursor: pointer; padding-right: 22px; }
-        .admin-mode .player-badge::after { content: '⚙️'; position: absolute; right: 6px; top: 5px; font-size: 9px; opacity: 0.6; }
-        .admin-mode .player-badge:hover { filter: brightness(0.95); border-color: #2563eb; }
+  CREATE TABLE IF NOT EXISTS players (
+    id TEXT PRIMARY KEY,
+    session TEXT NOT NULL,
+    name TEXT NOT NULL,
+    color TEXT NOT NULL,
+    status TEXT NOT NULL,
+    paymentMode TEXT,
+    referenceNumber TEXT,
+    fbLink TEXT,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
 
-        .badge-WHITE { background-color: #ffffff; color: #1e293b; }
-        .badge-RED { background-color: #fee2e2; color: #991b1b; border-color: #fca5a5; }
-        .badge-BLUE { background-color: #dbeafe; color: #1e40af; border-color: #93c5fd; }
-        .badge-BLACK { background-color: #1e293b; color: #ffffff; border-color: #0f172a; }
-        
-        .roster-scroll { max-height: 140px; overflow-y: auto; padding: 4px; border: 1px solid #cbd5e1; border-radius: 6px; background: #f8fafc; min-height: 40px;}
+  CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT
+  );
+`);
 
-        /* ADMIN SPECIFIC VISUAL LAYERS */
-        .admin-only { display: none !important; }
-        .admin-mode .admin-only { display: inline-block !important; }
-        .admin-flex { display: none !important; }
-        .admin-mode .admin-flex { display: flex !important; }
-        
-        .admin-badge-indicator { background: #ef4444; color: white; padding: 3px 8px; font-size: 11px; font-weight: bold; border-radius: 4px; margin-left: 10px; display: none; text-transform: uppercase; letter-spacing: 0.5px; }
-        .admin-mode .admin-badge-indicator { display: inline-block; }
-        
-        .admin-card-del-btn { position: absolute; right: 8px; top: 8px; background: #ef4444; color: white; border: none; border-radius: 4px; width: 20px; height: 20px; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; z-index: 5; }
-        .admin-card-del-btn:hover { background: #dc2626; }
+db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES ('is_locked', 'false')").run();
 
-        .day-del-btn { background: #ef4444; color: white; border: none; border-radius: 4px; padding: 2px 6px; font-size: 11px; cursor: pointer; font-weight: bold; }
-        .day-del-btn:hover { background: #dc2626; }
-        
-        .add-slot-btn { background: white; color: #64748b; border: 1px dashed #cbd5e1; padding: 10px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; text-align: center; margin-top: 8px; transition: all 0.2s; width: 100%; box-sizing: border-box; }
-        .add-slot-btn:hover { color: #1e293b; border-color: #94a3b8; background: #f8fafc; }
+// --- 2. GOOGLE OAUTH2 SETUP ---
+let driveClient = null;
+let sheetsClient = null;
 
-        .admin-action-bar { background: #ffeeeb; border: 1px solid #fca5a5; padding: 12px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 600; color: #991b1b; gap: 10px; flex-wrap: wrap; }
-        .admin-reset-btn { background: #ef4444; color: white; border: none; padding: 6px 12px; font-size: 11px; font-weight: bold; border-radius: 4px; cursor: pointer; text-transform: uppercase; }
-        .admin-reset-btn:hover { background: #dc2626; }
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_REFRESH_TOKEN) {
+  try {
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      'https://developers.google.com/oauthplayground'
+    );
+    oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
+    driveClient = google.drive({ version: 'v3', auth: oauth2Client });
+    sheetsClient = google.sheets({ version: 'v4', auth: oauth2Client });
+    console.log('✅ Google Drive (Personal 5TB) & Sheets Multi-Tab OAuth2 connected');
+  } catch (err) {
+    console.error('⚠️ Google Auth Init Error:', err.message);
+  }
+}
 
-        .admin-lock-btn { background: #d97706; color: white; border: none; padding: 6px 12px; font-size: 11px; font-weight: bold; border-radius: 4px; cursor: pointer; text-transform: uppercase; }
-        .admin-lock-btn:hover { background: #b45309; }
-        .admin-lock-btn.locked { background: #16a34a; }
-        .admin-lock-btn.locked:hover { background: #15803d; }
+// Drive file upload
+async function uploadToDrive(fileBuffer, fileName, mimeType) {
+  const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+  if (!driveClient || !folderId) return 'NO_DRIVE_CONFIG';
 
-        .admin-add-day-btn { background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 700; font-size: 13px; cursor: pointer; margin-bottom: 15px; }
-        .admin-add-day-btn:hover { background: #1d4ed8; }
+  const bufferStream = new stream.PassThrough();
+  bufferStream.end(fileBuffer);
 
-        /* POPUP MODAL TEMPLATE */
-        .time-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 100; }
-        .time-modal-content { background: white; padding: 25px; border-radius: 12px; max-width: 400px; width: 90%; box-sizing: border-box; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        .time-picker-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px; }
-        .time-select-group { display: flex; gap: 4px; margin-top: 4px; }
-        .time-modal-btns { display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px; }
-        .modal-btn { padding: 10px 20px; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; }
-        .modal-btn.save { background: #2563eb; color: white; }
-        .modal-btn.cancel { background: #e2e8f0; color: #475569; }
+  const res = await driveClient.files.create({
+    media: { mimeType, body: bufferStream },
+    requestBody: { name: fileName, parents: [folderId] },
+    fields: 'id, webViewLink'
+  });
 
-        /* INTERACTIVE ADMIN ACTION MODAL */
-        .admin-action-box { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
-        .admin-ctrl-btn { width: 100%; padding: 12px; font-weight: 700; font-size: 14px; border: none; border-radius: 6px; cursor: pointer; transition: background 0.2s; text-transform: uppercase; }
-        .admin-ctrl-btn.swap { background-color: #3b82f6; color: white; }
-        .admin-ctrl-btn.swap:hover { background-color: #2563eb; }
-        .admin-ctrl-btn.del { background-color: #ef4444; color: white; }
-        .admin-ctrl-btn.del:hover { background-color: #dc2626; }
+  try {
+    await driveClient.permissions.create({
+      fileId: res.data.id,
+      requestBody: { role: 'reader', type: 'anyone' }
+    });
+  } catch (e) {}
 
-        /* COMPACT FOOTER */
-        .club-footer { background-color: #000000; color: #94a3b8; padding: 12px 30px; font-size: 11px; border-top: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; }
-        @media (max-width: 600px) {
-            .club-footer { flex-direction: column; gap: 8px; text-align: center; padding: 15px; }
+  return res.data.webViewLink || `https://drive.google.com/file/d/${res.data.id}/view`;
+}
+
+// --- 3. MULTI-TAB GOOGLE SHEETS 2-WAY SYNC ENGINE ---
+let isSyncing = false;
+
+async function ensureSheetTab(sheetId, tabTitle) {
+  try {
+    const meta = await sheetsClient.spreadsheets.get({ spreadsheetId: sheetId });
+    const exists = meta.data.sheets.some(s => s.properties.title === tabTitle);
+    if (!exists) {
+      await sheetsClient.spreadsheets.batchUpdate({
+        spreadsheetId: sheetId,
+        requestBody: {
+          requests: [{ addSheet: { properties: { title: tabTitle } } }]
         }
-        .footer-left-txt { font-weight: 500; }
-        .footer-nav-links { display: flex; gap: 15px; align-items: center; }
-        .footer-link-item { color: #64748b; text-decoration: none; font-size: 11px; font-weight: 600; cursor: pointer; background: none; border: none; transition: color 0.2s; padding: 0; }
-        .footer-link-item:hover { color: #ffffff; }
-    </style>
-</head>
-<body id="pageBody">
+      });
+      const headers = tabTitle === 'Open Play Schedules'
+        ? [['id', 'day', 'name', 'time']]
+        : [['ID', 'Session ID', 'Player Name', 'Shirt Color', 'Status', 'Payment Option', 'Link for Screenshot', 'Facebook Link']];
 
-    <header class="club-header">
-        <div class="header-left">
-            <div class="club-logo-frame">
-                <img src="logo.jfif" alt="Barrio FC Logo" class="club-logo-img" onerror="this.style.display='none'">
-            </div>
-            <div class="club-logo-text">Barrio FC <span class="admin-badge-indicator">Admin</span></div>
-        </div>
-    </header>
+      await sheetsClient.spreadsheets.values.update({
+        spreadsheetId: sheetId,
+        range: `'${tabTitle}'!A1`,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: { values: headers }
+      });
+    }
+  } catch (e) {
+    console.error('ensureSheetTab Error:', e.message);
+  }
+}
 
-    <div class="main-wrapper">
-        <div class="admin-action-bar admin-flex">
-            <span>⚠️ Organizer Connected. Manage lineup status, clear rosters, or toggle System Lock Mode below.</span>
-            <div style="display: flex; gap: 8px;">
-                <button id="adminLockToggleBtn" class="admin-lock-btn" onclick="toggleSystemLockMode()">🔒 Lock Registration</button>
-                <button class="admin-reset-btn" onclick="clearActiveSession()">Reset Roster</button>
-            </div>
-        </div>
+async function pushDBToSheet() {
+  const sheetId = process.env.GOOGLE_SHEET_ID;
+  if (!sheetsClient || !sheetId || isSyncing) return;
 
-        <div style="text-align: right;">
-            <button class="admin-add-day-btn admin-only" onclick="openAddDayModal()">➕ Add Matchday</button>
-        </div>
+  try {
+    isSyncing = true;
+    const schedules = db.prepare("SELECT * FROM schedules").all();
 
-        <div class="top-board" id="dynamicDaysBoard"></div>
+    // 1. Sync "Open Play Schedules" tab
+    await ensureSheetTab(sheetId, 'Open Play Schedules');
+    const scheduleRows = [
+      ['id', 'day', 'name', 'time'],
+      ...schedules.map(s => [s.id, s.day, s.name, s.time])
+    ];
+    await sheetsClient.spreadsheets.values.update({
+      spreadsheetId: sheetId,
+      range: "'Open Play Schedules'!A1:D",
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: scheduleRows }
+    });
 
-        <div class="trigger-container">
-            <button id="triggerBtn" class="action-trigger-btn" onclick="toggleRegisterForm()">Loading sessions...</button>
-        </div>
+    if (scheduleRows.length < 50) {
+      await sheetsClient.spreadsheets.values.clear({
+        spreadsheetId: sheetId,
+        range: `'Open Play Schedules'!A${scheduleRows.length + 1}:D50`
+      });
+    }
 
-        <div id="regFormSection" class="form-section">
-            <h3 style="margin-top:0;" id="formTitle">Roster Registration Form</h3>
-            <form id="signupForm" onsubmit="handleSignup(event)">
-                <label for="shirtColor">Shirt / Team Preference:</label>
-                <select id="shirtColor" required onchange="adaptFormLimits()"></select>
+    // 2. Sync individual session roster tabs
+    for (const sched of schedules) {
+      const tabTitle = `${sched.name} - ${sched.time}`.replace(/[/\\?*[\]]/g, '').trim();
+      await ensureSheetTab(sheetId, tabTitle);
 
-                <div style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 12px; border-radius: 6px; margin-top: 15px;">
-                    <label for="isGK" style="margin-top:0; display:inline-flex; align-items:center; gap:8px; cursor:pointer;">
-                        <input type="checkbox" id="isGK" onchange="handleGKChange()" style="width:auto; margin:0;"> 🧤 Registering as a Goalkeeper (GK)?
-                    </label>
-                    <div id="gkWarning" style="color: #ea580c; font-size: 11px; font-weight: 600; margin-top: 4px; display: none;">
-                        ⚠️ The GK slot for this team color is already taken for this session.
-                    </div>
-                </div>
+      const players = db.prepare("SELECT * FROM players WHERE session = ? ORDER BY id ASC").all(sched.id);
+      const playerRows = [
+        ['ID', 'Session ID', 'Player Name', 'Shirt Color', 'Status', 'Payment Option', 'Link for Screenshot', 'Facebook Link'],
+        ...players.map(p => [
+          p.id.toString(),
+          p.session,
+          p.name,
+          p.color,
+          p.status,
+          p.paymentMode || '',
+          p.referenceNumber || '',
+          p.fbLink || ''
+        ])
+      ];
 
-                <label for="slotCount">Total Slots Needed:</label>
-                <select id="slotCount" onchange="handleSlotChange()"></select>
+      await sheetsClient.spreadsheets.values.update({
+        spreadsheetId: sheetId,
+        range: `'${tabTitle}'!A1:H`,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: { values: playerRows }
+      });
 
-                <label for="leaderName">Your Full Name:</label>
-                <input type="text" id="leaderName" required placeholder="Juan Dela Cruz">
+      if (playerRows.length < 100) {
+        await sheetsClient.spreadsheets.values.clear({
+          spreadsheetId: sheetId,
+          range: `'${tabTitle}'!A${playerRows.length + 1}:H100`
+        });
+      }
+    }
+  } catch (err) {
+    console.error('⚠️ Sheet Push Error:', err.message);
+  } finally {
+    isSyncing = false;
+  }
+}
 
-                <label for="fbLink">Facebook Profile Link:</label>
-                <input type="url" id="fbLink" required placeholder="https://www.facebook.com/username">
+async function pullSheetToDB() {
+  const sheetId = process.env.GOOGLE_SHEET_ID;
+  if (!sheetsClient || !sheetId || isSyncing) return;
 
-                <div id="friendFieldsContainer"></div>
+  try {
+    const meta = await sheetsClient.spreadsheets.get({ spreadsheetId: sheetId });
+    const sheetTabs = meta.data.sheets.map(s => s.properties.title);
 
-                <div id="policyWrapperZone">
-                    <div class="policy-box">
-                        <div class="policy-title">📋 Important Session Terms & Waiver Summary:</div>
-                        <div class="policy-section-header">Cancellation Policy:</div>
-                        • <strong>24+ Hours Notice:</strong> Cancellations made at least 24 hours prior to kickoff receive full session credit.<br>
-                        • <strong>Under 24 Hours:</strong> Non-refundable/non-creditable as pitch bookings are locked in. You may send a friend in your place!<br>
-                        <div class="policy-section-header">Injury & Liability Waiver:</div>
-                        • Football is a physical sport with inherent risks of injury. By registering, you voluntarily assume all participation risks and release Barrio FC, its organizers, and venue partners from injury/loss liability.<br>
-                        • Players must be physically fit to participate.<br>
-                        <div class="policy-section-header">Code of Conduct:</div>
-                        • Zero tolerance for dangerous play, verbal abuse, or aggressive behavior.
-                    </div>
+    // 1. Pull Schedules
+    if (sheetTabs.includes('Open Play Schedules')) {
+      const schedRes = await sheetsClient.spreadsheets.values.get({
+        spreadsheetId: sheetId,
+        range: "'Open Play Schedules'!A2:D"
+      });
+      const schedRows = schedRes.data.values || [];
 
-                    <div style="margin-top: 15px; padding: 4px 0; display: flex; align-items: flex-start; gap: 8px;">
-                        <input type="checkbox" id="policyAgreement" required style="width: auto; margin-top: 3px; cursor: pointer;" onchange="evaluateSubmitLockState()">
-                        <label for="policyAgreement" style="margin-top: 0; font-size: 13px; font-weight: 600; color: #1e293b; cursor: pointer; user-select: none;">
-                            I agree to the Session Terms, Cancellation Policy, Injury Waiver, and Code of Conduct.
-                        </label>
-                    </div>
-                </div>
-
-                <div id="waitlistPolicyWrapperZone" style="display: none;">
-                    <div class="waitlist-policy-box">
-                        <div class="waitlist-policy-title">🚨 Waitlist Terms & Waiver Summary:</div>
-                        • 🛑 <strong>Unconfirmed Slot:</strong> Being on the waitlist means your slot is not confirmed and you are not in the active lineup until called up.<br>
-                        • 🔄 <strong>Call-Ups:</strong> You will only get a playing slot if someone from the main roster cancels!<br>
-                        • ❌💳 <strong>No Advance Payment:</strong> Do NOT pay or send GCash in advance while you are on the waitlist.<br>
-                        • 📩 <strong>2-Hour Response Rule:</strong> Once an organizer messages you that a spot has opened up, you have <strong>2 hours to reply and confirm</strong> before the slot is offered to the next player.<br>
-                        • ⚽ <strong>Injury Waiver & Conduct:</strong> By joining the queue, you voluntarily assume physical play risks and agree to abide by our Code of Conduct and zero-tolerance aggression rules upon entering the match.
-                    </div>
-
-                    <div style="margin-top: 15px; padding: 4px 0; display: flex; align-items: flex-start; gap: 8px;">
-                        <input type="checkbox" id="waitlistAgreement" style="width: auto; margin-top: 3px; cursor: pointer;" onchange="evaluateSubmitLockState()">
-                        <label for="waitlistAgreement" style="margin-top: 0; font-size: 13px; font-weight: 600; color: #1e293b; cursor: pointer; user-select: none;">
-                            I agree to the Waitlist Rules, 2-Hour Response Policy, Injury Waiver, and Code of Conduct.
-                        </label>
-                    </div>
-                </div>
-
-                <div class="gcash-panel" id="paymentPanel">
-                    <div class="gcash-title">Secure Slot via GCash</div>
-                    <div class="gcash-content-split">
-                        <div class="gcash-info-box" id="paymentDetailsBox">
-                            Pitch Fee per Player: <strong>₱200</strong><br>
-                            Total Amount Due: <strong id="gcashTotalText">₱200</strong><br><br>
-                            Account Name: <strong>Jacel D. Palabay</strong><br>
-                            GCash Number: <strong>0967 169 3361</strong>
-                        </div>
-                        <div class="gcash-qr-container">
-                            <img id="paymentQrImg" src="gcash.jpg" alt="Payment QR Code" class="gcash-qr-img" onerror="this.style.display='none'; document.getElementById('qrPlaceholder').style.display='block';">
-                            <div class="gcash-qr-placeholder" id="qrPlaceholder" style="display:none;">📸 [Scan QR Code]</div>
-                        </div>
-                    </div>
-                    
-                    <label for="gcashScreenshot" style="color:#1e40af; margin-top:0;">Upload Payment Screenshot (PNG/JPG):</label>
-                    <input type="file" id="gcashScreenshot" accept="image/*" required style="background: white;">
-                </div>
-
-                <button type="submit" id="submitBtn" class="submit-btn" disabled>Confirm Registration</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- MODALS -->
-    <div class="time-modal" id="addDayModal">
-        <div class="time-modal-content">
-            <h3 style="margin-top:0; color:#1e293b;">Select Matchday to Add</h3>
-            <label for="dayPickerSelect">Choose Day:</label>
-            <select id="dayPickerSelect" style="font-weight: 600;">
-                <option value="monday">Monday</option>
-                <option value="tuesday">Tuesday</option>
-                <option value="wednesday">Wednesday</option>
-                <option value="thursday">Thursday</option>
-                <option value="friday">Friday</option>
-                <option value="saturday">Saturday</option>
-                <option value="sunday">Sunday</option>
-            </select>
-            <div class="time-modal-btns">
-                <button class="modal-btn cancel" onclick="closeAddDayModal()">Cancel</button>
-                <button class="modal-btn save" onclick="confirmAddDay()">Add Day</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="time-modal" id="timeModal">
-        <div class="time-modal-content">
-            <h3 style="margin-top:0; color:#1e293b;" id="timeModalHeaderTitle">Create Time Slot</h3>
-            <label for="modalSlotName">Slot Title Name:</label>
-            <input type="text" id="modalSlotName" placeholder="e.g. Late Night Pitch" required>
-            <div class="time-picker-row">
-                <div>
-                    <label>Start Time:</label>
-                    <div class="time-select-group">
-                        <select id="startHour"></select>
-                        <select id="startAmpm"><option value="AM">AM</option><option value="PM">PM</option></select>
-                    </div>
-                </div>
-                <div>
-                    <label>End Time:</label>
-                    <div class="time-select-group">
-                        <select id="endHour"></select>
-                        <select id="endAmpm"><option value="AM">AM</option><option value="PM">PM</option></select>
-                    </div>
-                </div>
-            </div>
-            <div class="time-modal-btns">
-                <button class="modal-btn cancel" onclick="closeTimeModal()">Cancel</button>
-                <button class="modal-btn save" onclick="saveCustomSlot()">Save Slot</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="time-modal" id="adminActionModal">
-        <div class="time-modal-content" style="max-width: 340px;">
-            <h3 style="margin:0; color:#1e293b; text-align:center;" id="adminModalPlayerName">Manage Player</h3>
-            <div style="font-size:12px; color:#64748b; text-align:center; margin-top:4px;" id="adminModalPlayerMeta"></div>
-            <div class="admin-action-box">
-                <button class="admin-ctrl-btn swap" onclick="fireAdminAction('SWAP')">🔄 Move Lineup status</button>
-                <button class="admin-ctrl-btn del" onclick="fireAdminAction('DELETE')">❌ Remove From Slot</button>
-                <button class="modal-btn cancel" style="margin-top:5px; text-transform:uppercase;" onclick="closeAdminModal()">Close</button>
-            </div>
-        </div>
-    </div>
-
-    <footer class="club-footer">
-        <div class="footer-left-txt">© 2026 Barrio FC. Pitch fees settled prior to kickoff.</div>
-        <div class="footer-nav-links">
-            <button id="adminLoginBtn" class="footer-link-item" onclick="toggleAdminMode()">🛡️ Organizers Portal</button>
-            <span style="color: #334155;">|</span>
-            <a href="https://www.facebook.com/profile.php?id=61591106954120" target="_blank" class="footer-link-item">Community Hub</a>
-        </div>
-    </footer>
-
-    <script>
-        // ==========================================
-        //  SELF-HOSTED API ON TOSHIBA NB500 (CLOUDFLARE TUNNEL)
-        // ==========================================
-        const API_URL = "https://insulation-apr-locate-ranging.trycloudflare.com"; 
-        const WS_URL = API_URL.replace('https://', 'wss://').replace('http://', 'ws://');
-
-        let currentSessionId = '';
-        let isAdmin = false;
-        let isSystemLocked = false; 
-        let globalPlayers = [];
-        let globalOpenSchedule = {};
-        let activeModalTargetDay = ''; 
-        let activeAdminPlayerId = null; 
-        let customActiveDays = new Set(); 
-        let socket = null;
-
-        const FEE_PER_PLAYER = 200;
-        const ADMIN_SECRET = '1234';
-        const availableColors = ['WHITE', 'RED', 'BLUE', 'BLACK'];
-
-        function populateTimeDropdowns() {
-            const startH = document.getElementById('startHour');
-            const endH = document.getElementById('endHour');
-            startH.innerHTML = ''; endH.innerHTML = '';
-            for(let i=1; i<=12; i++) {
-                let hr = i + ":00";
-                startH.innerHTML += `<option value="${hr}">${hr}</option>`;
-                endH.innerHTML += `<option value="${hr}">${hr}</option>`;
+      if (schedRows.length > 0) {
+        db.transaction(() => {
+          db.prepare("DELETE FROM schedules").run();
+          const insertSched = db.prepare("INSERT OR REPLACE INTO schedules (id, day, name, time) VALUES (?, ?, ?, ?)");
+          for (const r of schedRows) {
+            if (r[0] && r[1] && r[2] && r[3]) {
+              insertSched.run(r[0], r[1].toLowerCase(), r[2], r[3]);
             }
+          }
+        })();
+      }
+    } else {
+      pushDBToSheet();
+      return;
+    }
+
+    // 2. Pull Rosters
+    const schedules = db.prepare("SELECT * FROM schedules").all();
+    const allImportedPlayers = [];
+
+    for (const sched of schedules) {
+      const matchingTab = sheetTabs.find(title => title.includes(sched.name) || title.includes(sched.time));
+      if (!matchingTab) continue;
+
+      const playerRes = await sheetsClient.spreadsheets.values.get({
+        spreadsheetId: sheetId,
+        range: `'${matchingTab}'!A2:H`
+      });
+
+      const pRows = playerRes.data.values || [];
+      for (const r of pRows) {
+        if (!r[2]) continue;
+        allImportedPlayers.push({
+          id: r[0] || `p_${Date.now()}_${Math.random()}`,
+          session: r[1] || sched.id,
+          name: r[2],
+          color: r[3] || 'WAITLIST',
+          status: r[4] || 'MAIN',
+          paymentMode: r[5] || '',
+          referenceNumber: r[6] || '',
+          fbLink: r[7] || ''
+        });
+      }
+    }
+
+    if (allImportedPlayers.length > 0) {
+      db.transaction(() => {
+        db.prepare("DELETE FROM players").run();
+        const insertPlayer = db.prepare(`
+          INSERT INTO players (id, session, name, color, status, paymentMode, referenceNumber, fbLink)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        for (const p of allImportedPlayers) {
+          insertPlayer.run(p.id, p.session, p.name, p.color, p.status, p.paymentMode, p.referenceNumber, p.fbLink);
         }
-
-        async function initSystem() {
-            populateTimeDropdowns();
-            await fetchInitialData();
-            connectRealtimeWebSocket();
-        }
-
-        // --- HTTP INITIAL DATA FETCH ---
-        async function fetchInitialData() {
-            try {
-                const res = await fetch(`${API_URL}/api/data`);
-                const data = await res.json();
-                handleDataState(data);
-            } catch (err) {
-                console.error("Failed to connect to API:", err);
-                document.getElementById('triggerBtn').innerText = "Offline / Connecting...";
-            }
-        }
-
-        // --- REALTIME WEBSOCKET SUBSCRIPTION ---
-        function connectRealtimeWebSocket() {
-            try {
-                socket = new WebSocket(WS_URL);
-
-                socket.onmessage = (event) => {
-                    const message = JSON.parse(event.data);
-                    if (message.type === 'SYNC_DATA') {
-                        handleDataState(message.data);
-                    }
-                };
-
-                socket.onclose = () => {
-                    setTimeout(connectRealtimeWebSocket, 3000);
-                };
-            } catch (e) {
-                console.error("WS error:", e);
-            }
-        }
-
-        function handleDataState(data) {
-            globalPlayers = data.players || [];
-            globalOpenSchedule = {};
-            isSystemLocked = data.isLocked || false;
-
-            const schedules = data.openSchedules || [];
-            schedules.forEach(s => {
-                const dayName = s.day.toLowerCase();
-                globalOpenSchedule[s.id] = { day: dayName, name: s.name, time: s.time };
-                customActiveDays.add(dayName);
-            });
-
-            if (!currentSessionId && Object.keys(globalOpenSchedule).length > 0) {
-                currentSessionId = Object.keys(globalOpenSchedule)[0];
-            }
-
-            renderScheduleBoards();
-            renderRosters();
-        }
-
-        // --- UI & MODAL MANAGEMENT ---
-        function openAddDayModal() { document.getElementById('addDayModal').style.display = 'flex'; }
-        function closeAddDayModal() { document.getElementById('addDayModal').style.display = 'none'; }
-        function confirmAddDay() {
-            const chosenDay = document.getElementById('dayPickerSelect').value;
-            customActiveDays.add(chosenDay);
-            closeAddDayModal();
-            renderScheduleBoards();
-            openTimeModal(chosenDay);
-        }
-
-        function openTimeModal(day) {
-            activeModalTargetDay = day.toLowerCase();
-            const formattedDayName = activeModalTargetDay.charAt(0).toUpperCase() + activeModalTargetDay.slice(1);
-            document.getElementById('timeModalHeaderTitle').innerText = `Add Time Slot for ${formattedDayName}`;
-            document.getElementById('modalSlotName').value = '';
-            document.getElementById('timeModal').style.display = 'flex';
-        }
-        function closeTimeModal() { document.getElementById('timeModal').style.display = 'none'; }
-
-        async function saveCustomSlot() {
-            const name = document.getElementById('modalSlotName').value.trim();
-            if(!name) { alert("Please enter a title."); return; }
-            
-            const timeStr = `${document.getElementById('startHour').value} ${document.getElementById('startAmpm').value} - ${document.getElementById('endHour').value} ${document.getElementById('endAmpm').value}`;
-            const generatedId = 'custom_' + Date.now();
-            
-            closeTimeModal();
-            document.getElementById('triggerBtn').innerText = "Creating time slot...";
-
-            await fetch(`${API_URL}/api/addSlot`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: generatedId, day: activeModalTargetDay, name: name, time: timeStr })
-            });
-
-            currentSessionId = generatedId;
-        }
-
-        async function toggleSystemLockMode() {
-            const targetState = !isSystemLocked;
-            await fetch(`${API_URL}/api/toggleLock`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ isLocked: targetState })
-            });
-        }
-
-        function toggleAdminMode() {
-            if (!isAdmin) {
-                const challenge = prompt("Enter Admin Secret Key to access controls:");
-                if (challenge === ADMIN_SECRET) {
-                    isAdmin = true;
-                    document.getElementById('pageBody').classList.add('admin-mode');
-                    document.getElementById('adminLoginBtn').innerText = "🛡️ Exit Admin Area";
-                } else if (challenge !== null) { alert("Incorrect secret key code."); }
-            } else {
-                isAdmin = false;
-                document.getElementById('pageBody').classList.remove('admin-mode');
-                document.getElementById('adminLoginBtn').innerText = "🛡️ Organizers Portal";
-            }
-            renderScheduleBoards();
-            renderRosters();
-        }
-
-        function checkGKStatus() {
-            const chosenColor = document.getElementById('shirtColor').value;
-            const isGkCheckbox = document.getElementById('isGK');
-            const gkWarning = document.getElementById('gkWarning');
-            if (!chosenColor) return false;
-
-            const gkRegisteredCount = globalPlayers.filter(p => 
-                p.session === currentSessionId && p.color === chosenColor && p.status === 'MAIN' && p.name.includes('(GK)')
-            ).length;
-
-            if (gkRegisteredCount >= 1) {
-                isGkCheckbox.checked = false;
-                isGkCheckbox.disabled = true;
-                gkWarning.style.display = "block";
-                return true;
-            } else {
-                isGkCheckbox.disabled = false;
-                gkWarning.style.display = "none";
-                return false;
-            }
-        }
-
-        function handleGKChange() {
-            const isGkCheckbox = document.getElementById('isGK');
-            const slotSelect = document.getElementById('slotCount');
-            if (isGkCheckbox.checked) {
-                slotSelect.value = "1";
-                slotSelect.disabled = true;
-            } else {
-                const chosenColor = document.getElementById('shirtColor').value;
-                const activeOnTeam = globalPlayers.filter(p => p.session === currentSessionId && p.color === chosenColor && p.status === 'MAIN').length;
-                if (activeOnTeam < 10) {
-                    slotSelect.disabled = false;
-                }
-            }
-            handleSlotChange();
-        }
-
-        function renderScheduleBoards() {
-            const boardContainer = document.getElementById('dynamicDaysBoard');
-            const triggerBtn = document.getElementById('triggerBtn');
-            if (!boardContainer) return;
-            
-            boardContainer.innerHTML = '';
-            const scheduleKeys = Object.keys(globalOpenSchedule);
-            const dayGroups = {};
-            customActiveDays.forEach(d => { dayGroups[d] = []; });
-
-            scheduleKeys.forEach(id => {
-                const session = globalOpenSchedule[id];
-                const dayKey = session.day || 'other';
-                if (!dayGroups[dayKey]) dayGroups[dayKey] = [];
-                dayGroups[dayKey].push({ id: id, ...session });
-            });
-
-            Object.keys(dayGroups).forEach(day => {
-                const formattedDayName = day.charAt(0).toUpperCase() + day.slice(1);
-                
-                let cardsHtml = '';
-                dayGroups[day].forEach(session => {
-                    const count = globalPlayers.filter(p => p.session === session.id && p.status === 'MAIN').length;
-                    const activeClass = session.id === currentSessionId ? 'active' : '';
-
-                    cardsHtml += `
-                        <div class="session-card ${activeClass}" id="session_${session.id}" onclick="selectSession('${session.id}')">
-                            ${isAdmin ? `<button class="admin-card-del-btn" onclick="deleteSlot(event, '${session.id}')">×</button>` : ''}
-                            <div class="session-time">${session.name} <span class="live-pill">${count}/40</span></div>
-                            <div class="session-meta"><span>${session.time}</span></div>
-                        </div>
-                    `;
-                });
-
-                if (cardsHtml === '') {
-                    cardsHtml = '<span style="color:#94a3b8; font-size:12px; padding:10px; display:block; text-align:center; font-style:italic;">No slots created for this day yet.</span>';
-                }
-
-                const colHtml = `
-                    <div class="board-column" id="col-${day}">
-                        <div class="board-title">
-                            <span>📅 ${formattedDayName} Slots</span>
-                            ${isAdmin ? `<button class="day-del-btn admin-only" onclick="deleteEntireDay('${day}')" title="Delete day column">×</button>` : ''}
-                        </div>
-                        <div id="slots-container-${day}">${cardsHtml}</div>
-                        <button class="add-slot-btn admin-only" onclick="openTimeModal('${day}')">+ Add Time Slot</button>
-                    </div>
-                `;
-                boardContainer.innerHTML += colHtml;
-            });
-
-            const rosterColHtml = `
-                <div class="board-column roster-column">
-                    <div class="board-title"><span>📊 Live: <span id="liveCount">0</span>/40</span></div>
-                    <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
-                        <div style="margin-bottom: 12px;">
-                            <div style="font-size: 12px; font-weight: bold; color: #16a34a; margin-bottom: 4px;">Main Roster</div>
-                            <div id="mainRosterContainer" class="roster-scroll"></div>
-                        </div>
-                        <div>
-                            <div style="font-size: 12px; font-weight: bold; color: #ea580c; margin-bottom: 4px;">Waitlist (<span id="waitlistCount">0</span>/10)</div>
-                            <div id="waitlistContainer" class="roster-scroll"></div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            boardContainer.innerHTML += rosterColHtml;
-
-            const lockBtn = document.getElementById('adminLockToggleBtn');
-            if (isSystemLocked) {
-                lockBtn.innerText = "🔓 Unlock Registration";
-                lockBtn.classList.add('locked');
-                triggerBtn.innerText = "🔒 Registration is Locked";
-                triggerBtn.disabled = true;
-                document.getElementById('regFormSection').style.display = 'none';
-                triggerBtn.classList.remove('form-open');
-                return;
-            } else {
-                lockBtn.innerText = "🔒 Lock Registration";
-                lockBtn.classList.remove('locked');
-            }
-
-            if (globalOpenSchedule[currentSessionId]) { 
-                const activeSessionPlayers = globalPlayers.filter(p => p.session === currentSessionId);
-                const mainCount = activeSessionPlayers.filter(p => p.status === 'MAIN').length;
-                const waitCount = activeSessionPlayers.filter(p => p.status === 'WAITLIST').length;
-
-                if (mainCount >= 40 && waitCount >= 10) {
-                    triggerBtn.innerText = `❌ Registration Full: ${globalOpenSchedule[currentSessionId].name}`;
-                    triggerBtn.disabled = true;
-                    document.getElementById('regFormSection').style.display = 'none';
-                    triggerBtn.classList.remove('form-open');
-                } else {
-                    triggerBtn.disabled = false;
-                    if (document.getElementById('regFormSection').style.display === 'block') {
-                        triggerBtn.innerText = `Close Form`;
-                    } else {
-                        triggerBtn.innerText = `📝 Register for: ${globalOpenSchedule[currentSessionId].name}`; 
-                    }
-                }
-            } else {
-                triggerBtn.innerText = "Select a time slot";
-                triggerBtn.disabled = false;
-            }
-        }
-
-        async function deleteEntireDay(day) {
-            if (confirm(`Delete all slots under ${day.toUpperCase()}?`)) {
-                customActiveDays.delete(day);
-                await fetch(`${API_URL}/api/deleteDay`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ day: day })
-                });
-            }
-        }
-
-        async function deleteSlot(e, id) {
-            e.stopPropagation();
-            if (confirm("Delete this custom time slot?")) {
-                await fetch(`${API_URL}/api/deleteSlot`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: id })
-                });
-                if (currentSessionId === id) currentSessionId = '';
-            }
-        }
-
-        function modifyPlayer(playerId) {
-            if (!isAdmin) return;
-            const player = globalPlayers.find(p => p.id.toString() === playerId.toString()); 
-            if (!player) return;
-
-            activeAdminPlayerId = playerId;
-            document.getElementById('adminModalPlayerName').innerText = player.name;
-            document.getElementById('adminModalPlayerMeta').innerHTML = player.referenceNumber && player.referenceNumber.startsWith('http') 
-                ? `<a href="${player.referenceNumber}" target="_blank" style="color:#2563eb; font-weight:600;">View Drive Screenshot ↗</a>` 
-                : `Status: ${player.referenceNumber || 'N/A'}`;
-            document.getElementById('adminActionModal').style.display = 'flex';
-        }
-
-        function closeAdminModal() {
-            document.getElementById('adminActionModal').style.display = 'none';
-            activeAdminPlayerId = null;
-        }
-
-        async function fireAdminAction(subAction) {
-            if (!activeAdminPlayerId) return;
-            if (subAction === 'DELETE' && !confirm("Drop this player?")) return;
-            
-            const targetId = activeAdminPlayerId;
-            closeAdminModal();
-
-            await fetch(`${API_URL}/api/modifyPlayer`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: targetId, subAction: subAction })
-            });
-        }
-
-        function handleSlotChange() { updateFriendFields(); updateGCashCalculation(); }
-        function updateGCashCalculation() {
-            const slots = parseInt(document.getElementById('slotCount').value) || 1;
-            document.getElementById('gcashTotalText').innerText = `₱${slots * FEE_PER_PLAYER}`;
-        }
-
-        function evaluateSubmitLockState() {
-            const colorSelect = document.getElementById('shirtColor');
-            const submitBtn = document.getElementById('submitBtn');
-            const policyCheckbox = document.getElementById('policyAgreement');
-            const waitlistCheckbox = document.getElementById('waitlistAgreement');
-            
-            if (!currentSessionId || !globalOpenSchedule[currentSessionId]) return;
-
-            if (isSystemLocked) {
-                submitBtn.disabled = true;
-                submitBtn.innerText = "🔒 Registration is Locked";
-                submitBtn.style.backgroundColor = "#94a3b8";
-                return;
-            }
-
-            const sessionPlayers = globalPlayers.filter(p => p.session === currentSessionId);
-            const activeSessionPlayers = sessionPlayers.filter(p => p.status === 'MAIN');
-            const waitlistedSessionPlayers = sessionPlayers.filter(p => p.status === 'WAITLIST');
-            const totalWaitlistCount = waitlistedSessionPlayers.length;
-
-            let teamCounts = { WHITE: 0, RED: 0, BLUE: 0, BLACK: 0 };
-            activeSessionPlayers.forEach(p => { if (teamCounts[p.color] !== undefined) teamCounts[p.color]++; });
-
-            const chosenColor = colorSelect.value || availableColors[0];
-            const activeOnTeam = teamCounts[chosenColor];
-
-            if (activeOnTeam >= 10 && totalWaitlistCount >= 10) {
-                submitBtn.disabled = true;
-                submitBtn.innerText = "❌ Waitlist Full for this Session (10/10)";
-                submitBtn.style.backgroundColor = "#94a3b8";
-                return;
-            }
-
-            const isWaitlistTx = activeOnTeam >= 10;
-
-            if (isWaitlistTx) {
-                submitBtn.innerText = "Join Waitlist Queue";
-                submitBtn.style.backgroundColor = "#ea580c";
-                submitBtn.disabled = !waitlistCheckbox.checked;
-            } else {
-                submitBtn.innerText = "Confirm Registration";
-                submitBtn.style.backgroundColor = "#2563eb";
-                submitBtn.disabled = !policyCheckbox.checked;
-            }
-        }
-
-        function adaptFormLimits() {
-            if (!currentSessionId || !globalOpenSchedule[currentSessionId]) return;
-            
-            const colorSelect = document.getElementById('shirtColor');
-            const slotSelect = document.getElementById('slotCount');
-            const submitBtn = document.getElementById('submitBtn');
-            const triggerBtn = document.getElementById('triggerBtn');
-            const paymentPanel = document.getElementById('paymentPanel');
-            const screenshotInput = document.getElementById('gcashScreenshot');
-            const policyWrapperZone = document.getElementById('policyWrapperZone');
-            const policyCheckbox = document.getElementById('policyAgreement');
-            const waitlistPolicyWrapperZone = document.getElementById('waitlistPolicyWrapperZone');
-            const waitlistCheckbox = document.getElementById('waitlistAgreement');
-            const previousSelection = colorSelect.value;
-            const previousSlotVal = slotSelect.value;
-
-            if (isSystemLocked) {
-                triggerBtn.innerText = "🔒 Registration is Locked";
-                triggerBtn.disabled = true;
-                document.getElementById('regFormSection').style.display = 'none';
-                return;
-            }
-
-            const sessionPlayers = globalPlayers.filter(p => p.session === currentSessionId);
-            const activeSessionPlayers = sessionPlayers.filter(p => p.status === 'MAIN');
-            const waitlistedSessionPlayers = sessionPlayers.filter(p => p.status === 'WAITLIST');
-            const totalWaitlistCount = waitlistedSessionPlayers.length;
-
-            let teamCounts = { WHITE: 0, RED: 0, BLUE: 0, BLACK: 0 };
-            activeSessionPlayers.forEach(p => { if (teamCounts[p.color] !== undefined) teamCounts[p.color]++; });
-
-            colorSelect.disabled = false;
-            slotSelect.disabled = false;
-
-            colorSelect.innerHTML = '';
-            let availableTeamsExist = false;
-
-            availableColors.forEach(color => {
-                const currentCount = teamCounts[color];
-
-                if (currentCount < 10) {
-                    colorSelect.innerHTML += `<option value="${color}">${color} Team (${10 - currentCount} spots left)</option>`;
-                    availableTeamsExist = true;
-                } else if (totalWaitlistCount < 10) {
-                    colorSelect.innerHTML += `<option value="${color}" style="color: #ea580c;">⚠️ ${color} Team (Waitlist Only - ${10 - totalWaitlistCount} spots left in queue)</option>`;
-                    availableTeamsExist = true;
-                } else {
-                    colorSelect.innerHTML += `<option value="${color}" disabled style="color: #94a3b8;">❌ ${color} Team (Waitlist Full - 10/10)</option>`;
-                }
-            });
-
-            if (previousSelection && !colorSelect.querySelector(`option[value="${previousSelection}"]:disabled`)) {
-                colorSelect.value = previousSelection;
-            }
-
-            const chosenColor = colorSelect.value || availableColors[0];
-            const activeOnTeam = teamCounts[chosenColor];
-            
-            slotSelect.innerHTML = '';
-
-            if (!availableTeamsExist) {
-                triggerBtn.innerText = `❌ Registration Full: ${globalOpenSchedule[currentSessionId].name}`;
-                triggerBtn.disabled = true;
-                document.getElementById('regFormSection').style.display = 'none';
-                return;
-            }
-            
-            if (activeOnTeam < 10) {
-                const spotsRemaining = 10 - activeOnTeam;
-                
-                for (let i = 1; i <= spotsRemaining; i++) {
-                    slotSelect.innerHTML += `<option value="${i}">${i === 1 ? '1 slot (Just me)' : i + ' slots'}</option>`;
-                }
-                
-                if (previousSlotVal && parseInt(previousSlotVal) <= spotsRemaining) {
-                    slotSelect.value = previousSlotVal;
-                }
-                
-                paymentPanel.style.display = "block";
-                screenshotInput.required = true;
-                policyWrapperZone.style.display = "block";
-                policyCheckbox.required = true;
-                
-                waitlistPolicyWrapperZone.style.display = "none";
-                waitlistCheckbox.required = false;
-                waitlistCheckbox.checked = false;
-            } else if (totalWaitlistCount < 10) {
-                slotSelect.innerHTML = `<option value="1">1 waitlist slot</option>`;
-                slotSelect.value = "1";
-                slotSelect.disabled = true;
-                
-                paymentPanel.style.display = "none";
-                screenshotInput.required = false;
-                screenshotInput.value = ""; 
-                policyWrapperZone.style.display = "none";
-                policyCheckbox.required = false;
-                policyCheckbox.checked = false;
-
-                waitlistPolicyWrapperZone.style.display = "block";
-                waitlistCheckbox.required = true;
-            } else {
-                slotSelect.disabled = true;
-                paymentPanel.style.display = "none";
-                policyWrapperZone.style.display = "none";
-                waitlistPolicyWrapperZone.style.display = "none";
-            }
-
-            checkGKStatus(); 
-            handleGKChange();
-            evaluateSubmitLockState();
-        }
-
-        function updateFriendFields() {
-            const totalSlots = parseInt(document.getElementById('slotCount').value) || 1;
-            const container = document.getElementById('friendFieldsContainer'); 
-            container.innerHTML = ''; 
-            for (let i = 1; i < totalSlots; i++) {
-                container.innerHTML += `<div class="friend-input"><label>Player ${i + 1} Full Name:</label><input type="text" class="friend-name-input" required placeholder="Squad mate's name"></div>`;
-            }
-        }
-
-        function toggleRegisterForm() {
-            if (isSystemLocked) return;
-            const formZone = document.getElementById('regFormSection');
-            const btn = document.getElementById('triggerBtn');
-            if (formZone.style.display === 'block') { formZone.style.display = 'none'; btn.classList.remove('form-open'); } 
-            else { formZone.style.display = 'block'; btn.classList.add('form-open'); formZone.scrollIntoView({ behavior: 'smooth' }); adaptFormLimits(); }
-        }
-
-        function selectSession(id) { 
-            currentSessionId = id; 
-            renderScheduleBoards(); 
-            renderRosters(); 
-            if (document.getElementById('regFormSection').style.display === 'block') adaptFormLimits(); 
-        }
-
-        async function handleSignup(e) {
-            e.preventDefault();
-            if (isSystemLocked) {
-                alert("🔒 Registration is currently locked by the organizers.");
-                return;
-            }
-
-            const leaderName = document.getElementById('leaderName').value.trim();
-            const fbLink = document.getElementById('fbLink').value.trim();
-            const shirtColor = document.getElementById('shirtColor').value;
-            const fileInput = document.getElementById('gcashScreenshot');
-            const policyCheckbox = document.getElementById('policyAgreement');
-            const waitlistCheckbox = document.getElementById('waitlistAgreement');
-            const friendInputs = document.querySelectorAll('.friend-name-input');
-            const isGK = document.getElementById('isGK').checked;
-
-            if (!shirtColor) return;
-
-            const sessionPlayers = globalPlayers.filter(p => p.session === currentSessionId);
-            const activeSessionPlayers = sessionPlayers.filter(p => p.status === 'MAIN');
-            
-            // --- 🧤 GOALKEEPER REQUIREMENT GUARDRAIL (9+ players without GK) ---
-            const hasExistingGK = activeSessionPlayers.some(p => p.name.toUpperCase().includes('(GK)') || p.name.toUpperCase().includes('GK'));
-            if (activeSessionPlayers.length >= 9 && !hasExistingGK && !isGK) {
-                alert("🧤 Goalkeeper Slot Required!\n\n9 players are registered for this session without a GK. Further registrations are restricted to Goalkeepers only until a GK signs up.");
-                return;
-            }
-
-            let teamCounts = { WHITE: 0, RED: 0, BLUE: 0, BLACK: 0 };
-            activeSessionPlayers.forEach(p => { if (teamCounts[p.color] !== undefined) teamCounts[p.color]++; });
-            const isWaitlistTx = teamCounts[shirtColor] >= 10;
-
-            if (!isWaitlistTx) {
-                if (!policyCheckbox.checked) {
-                    alert("❌ You must read and agree to the Session Terms & Waiver to complete your registration.");
-                    return;
-                }
-                if (!fileInput.files || fileInput.files.length === 0) {
-                    alert("❌ Please attach a screenshot file of your payment to proceed.");
-                    return;
-                }
-            } else {
-                if (!waitlistCheckbox.checked) {
-                    alert("❌ You must acknowledge the Waitlist Policy and Waiver before joining the queue.");
-                    return;
-                }
-            }
-
-            let finalLeaderName = leaderName;
-            if (isGK) finalLeaderName += ' (GK)';
-
-            let newPlayers = [finalLeaderName];
-            friendInputs.forEach(input => { if(input.value.trim() !== "") newPlayers.push(input.value.trim()); });
-
-            const nameRegex = /^[A-Za-zÀ-ÖØ-öø-ÿ\s.\-]+$/;
-            for (let name of newPlayers) {
-                let cleanCheckName = name.replace(' (GK)', '');
-                if (!nameRegex.test(cleanCheckName)) {
-                    alert(`❌ Invalid Name: "${cleanCheckName}"\n\nPlayer names must only contain letters.`);
-                    return;
-                }
-            }
-
-            const simplifiedNewNames = newPlayers.map(name => name.toLowerCase().replace(/\s+/g, ' '));
-            if (new Set(simplifiedNewNames).size !== newPlayers.length) {
-                alert("❌ Duplicate Entry Blocked in this transaction."); return;
-            }
-
-            let existingSessionPlayers = globalPlayers.filter(p => p.session === currentSessionId);
-            for (let name of newPlayers) {
-                if (existingSessionPlayers.some(ep => ep.name.toLowerCase().replace(/\s+/g, ' ') === name.toLowerCase().replace(/\s+/g, ' '))) {
-                    alert(`❌ Blocked! "${name.replace(' (GK)', '')}" is already registered.`); return;
-                }
-            }
-
-            const currentMainCount = globalPlayers.filter(p => p.session === currentSessionId && p.color === shirtColor && p.status === 'MAIN').length;
-            const payloadPlayers = newPlayers.map((name, index) => {
-                return {
-                    session: currentSessionId,
-                    name: name,
-                    color: shirtColor,
-                    status: (currentMainCount + index) < 10 ? 'MAIN' : 'WAITLIST',
-                    paymentMode: isWaitlistTx ? 'WAITLIST_QUEUE' : 'GCASH',
-                    fbLink: index === 0 ? fbLink : "" 
-                };
-            });
-
-            document.getElementById('submitBtn').disabled = true;
-            document.getElementById('submitBtn').innerText = "Submitting registration...";
-
-            const formData = new FormData();
-            formData.append('players', JSON.stringify(payloadPlayers));
-            if (!isWaitlistTx && fileInput.files.length > 0) {
-                formData.append('receipt', fileInput.files[0]);
-            }
-
-            try {
-                const res = await fetch(`${API_URL}/api/register`, {
-                    method: 'POST',
-                    body: formData
-                });
-                const result = await res.json();
-
-                if (result.success) {
-                    document.getElementById('signupForm').reset();
-                    toggleRegisterForm();
-                    alert(isWaitlistTx ? "Successfully joined the waitlist queue!" : "Registration confirmed and synced!");
-                } else {
-                    alert("Error registering: " + (result.error || "Unknown error"));
-                }
-            } catch (err) {
-                alert("Submission failed. Server might be offline.");
-            } finally {
-                document.getElementById('submitBtn').disabled = false;
-            }
-        }
-
-        function renderRosters() {
-            const mainContainer = document.getElementById('mainRosterContainer');
-            const waitContainer = document.getElementById('waitlistContainer');
-            const waitlistCountElem = document.getElementById('waitlistCount');
-            if (!mainContainer || !waitContainer) return;
-            
-            mainContainer.innerHTML = ''; waitContainer.innerHTML = '';
-            let mainCount = 0; let waitCount = 0;
-            const activePlayers = globalPlayers.filter(p => p.session === currentSessionId);
-
-            const colorOrder = { 'WHITE': 1, 'RED': 2, 'BLUE': 3, 'BLACK': 4 };
-            activePlayers.sort((a, b) => {
-                if (colorOrder[a.color] !== colorOrder[b.color]) return colorOrder[a.color] - colorOrder[b.color];
-                return String(a.id || '').localeCompare(String(b.id || ''), undefined, { numeric: true, sensitivity: 'base' });
-            });
-
-            activePlayers.forEach(player => {
-                const badgeHtml = `<span class="player-badge badge-${player.color}" onclick="modifyPlayer('${player.id}')">${player.status === 'WAITLIST' ? (waitCount + 1) + '. ' : ''}${player.name}</span>`;
-                if (player.status === 'MAIN') { mainContainer.innerHTML += badgeHtml; mainCount++; } 
-                else { waitContainer.innerHTML += badgeHtml; waitCount++; }
-            });
-
-            document.getElementById('liveCount').innerText = mainCount;
-            if (waitlistCountElem) waitlistCountElem.innerText = waitCount;
-
-            if(mainCount === 0) mainContainer.innerHTML = '<span style="color:#94a3b8; font-size:11px; padding:5px; display:block;">Empty slot.</span>';
-            if(waitCount === 0) waitContainer.innerHTML = '<span style="color:#94a3b8; font-size:11px; padding:5px; display:block;">Empty queue.</span>';
-        }
-
-        async function clearActiveSession() {
-            if(confirm("Wipe out entries?")) {
-                await fetch(`${API_URL}/api/clearRoster`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ session: currentSessionId })
-                });
-            }
-        }
-        window.onload = function() { initSystem(); };
-    </script>
-</body>
-</html>
+      })();
+    }
+
+    broadcastUpdate();
+  } catch (err) {
+    // Suppress polling noise
+  }
+}
+
+// Background sync loop: check Google Sheets every 5 seconds
+setInterval(pullSheetToDB, 5000);
+
+// --- 4. REALTIME WEBSOCKET BROADCAST ---
+function broadcastUpdate() {
+  const data = getFullState();
+  const payload = JSON.stringify({ type: 'SYNC_DATA', data });
+  wss.clients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) client.send(payload);
+  });
+}
+
+function getFullState() {
+  const openSchedules = db.prepare("SELECT * FROM schedules").all();
+  const players = db.prepare("SELECT * FROM players ORDER BY id ASC").all();
+  const lockRow = db.prepare("SELECT value FROM settings WHERE key = 'is_locked'").get();
+  return {
+    openSchedules,
+    players,
+    isLocked: lockRow ? lockRow.value === 'true' : false
+  };
+}
+
+// --- 5. API ROUTES ---
+app.get('/api/data', (req, res) => res.json(getFullState()));
+
+app.post('/api/addSlot', async (req, res) => {
+  const { id, day, name, time } = req.body;
+  if (!id || !day || !name || !time) return res.status(400).json({ error: 'Missing fields' });
+  db.prepare("INSERT OR REPLACE INTO schedules (id, day, name, time) VALUES (?, ?, ?, ?)").run(id, day.toLowerCase(), name, time);
+  broadcastUpdate();
+  await pushDBToSheet();
+  res.json({ success: true });
+});
+
+app.post('/api/deleteSlot', async (req, res) => {
+  const { id } = req.body;
+  db.prepare("DELETE FROM schedules WHERE id = ?").run(id);
+  db.prepare("DELETE FROM players WHERE session = ?").run(id);
+  broadcastUpdate();
+  await pushDBToSheet();
+  res.json({ success: true });
+});
+
+app.post('/api/deleteDay', async (req, res) => {
+  const { day } = req.body;
+  const slots = db.prepare("SELECT id FROM schedules WHERE day = ?").all(day.toLowerCase());
+  const deletePlayers = db.prepare("DELETE FROM players WHERE session = ?");
+  slots.forEach(slot => deletePlayers.run(slot.id));
+  db.prepare("DELETE FROM schedules WHERE day = ?").run(day.toLowerCase());
+  broadcastUpdate();
+  await pushDBToSheet();
+  res.json({ success: true });
+});
+
+app.post('/api/register', upload.single('receipt'), async (req, res) => {
+  try {
+    // 1. Lockout Check
+    const lockRow = db.prepare("SELECT value FROM settings WHERE key = 'is_locked'").get();
+    if (lockRow && lockRow.value === 'true') {
+      return res.status(403).json({ error: 'Registration is currently locked.' });
+    }
+
+    const { players: playersRaw } = req.body;
+    const players = JSON.parse(playersRaw || '[]');
+    if (!players.length) return res.status(400).json({ error: 'No player data provided' });
+
+    // Rule 2: Max 9 players per registration
+    if (players.length > 9) {
+      return res.status(400).json({ error: 'Maximum 9 players allowed per registration.' });
+    }
+
+    const sessionId = players[0].session;
+    const isWaitlist = players[0].status === 'WAITLIST' || players[0].color === 'WAITLIST';
+
+    // Rule 3: Waitlist capped at 5
+    if (isWaitlist) {
+      const waitlistCount = db.prepare("SELECT COUNT(*) as cnt FROM players WHERE session = ? AND status = 'WAITLIST'").get(sessionId).cnt;
+      if (waitlistCount >= 5) {
+        return res.status(400).json({ error: 'Waitlist is full for this session (5/5).' });
+      }
+    } else {
+      // Rule 1: Per-Team GK Requirement
+      const teamColor = players[0].color;
+      const existingTeamPlayers = db.prepare("SELECT name FROM players WHERE session = ? AND color = ? AND status = 'MAIN'").all(sessionId, teamColor);
+      const hasExistingTeamGK = existingTeamPlayers.some(p => p.name.includes('(GK)'));
+      const isRegisteringGK = players.some(p => p.name.includes('(GK)'));
+
+      if (existingTeamPlayers.length >= 9 && !hasExistingTeamGK && !isRegisteringGK) {
+        return res.status(400).json({
+          error: `🧤 Goalkeeper Required: The ${teamColor} team has 9 outfield players. The final slot is reserved exclusively for a Goalkeeper.`
+        });
+      }
+    }
+
+    let proofUrl = isWaitlist ? 'WAITLIST_QUEUE' : 'NO_PROOF';
+
+    if (req.file) {
+      const fileName = `Receipt_${Date.now()}_${players[0].name.replace(/\s+/g, '_')}.jpg`;
+      console.log(`Uploading receipt to 5TB Drive for ${players[0].name}...`);
+      proofUrl = await uploadToDrive(req.file.buffer, fileName, req.file.mimetype);
+      console.log(`✅ Upload complete: ${proofUrl}`);
+    }
+
+    const insertStmt = db.prepare(`
+      INSERT INTO players (id, session, name, color, status, paymentMode, referenceNumber, fbLink)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const insertMany = db.transaction((playerList) => {
+      for (const p of playerList) {
+        const playerId = p.id || String(Date.now() + Math.floor(Math.random() * 1000));
+        insertStmt.run(
+          playerId, 
+          p.session, 
+          p.name, 
+          p.status === 'WAITLIST' ? 'WAITLIST' : p.color, 
+          p.status, 
+          p.status === 'WAITLIST' ? 'WAITLIST_QUEUE' : p.paymentMode, 
+          proofUrl, 
+          p.fbLink || ''
+        );
+      }
+    });
+    insertMany(players);
+
+    broadcastUpdate();
+    pushDBToSheet();
+    res.json({ success: true, proofUrl });
+  } catch (err) {
+    console.error('Registration Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/modifyPlayer', async (req, res) => {
+  const { id, subAction } = req.body;
+  if (subAction === 'DELETE') {
+    db.prepare("DELETE FROM players WHERE id = ?").run(id);
+  } else if (subAction === 'SWAP') {
+    const player = db.prepare("SELECT status FROM players WHERE id = ?").get(id);
+    if (player) {
+      db.prepare("UPDATE players SET status = ? WHERE id = ?").run(player.status === 'MAIN' ? 'WAITLIST' : 'MAIN', id);
+    }
+  }
+  broadcastUpdate();
+  await pushDBToSheet();
+  res.json({ success: true });
+});
+
+app.post('/api/clearRoster', async (req, res) => {
+  const { session } = req.body;
+  db.prepare("DELETE FROM players WHERE session = ?").run(session);
+  broadcastUpdate();
+  await pushDBToSheet();
+  res.json({ success: true });
+});
+
+app.post('/api/toggleLock', (req, res) => {
+  const { isLocked } = req.body;
+  db.prepare("UPDATE settings SET value = ? WHERE key = 'is_locked'").run(isLocked ? 'true' : 'false');
+  broadcastUpdate();
+  res.json({ success: true });
+});
+
+setTimeout(pushDBToSheet, 2000);
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`🚀 Barrio FC Server running on port ${PORT}`));
+EOF
